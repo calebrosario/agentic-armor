@@ -110,13 +110,13 @@ export class ProcessSupervisor {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         logger.warn('Process stop timeout, force killing', { processId, pid: state.pid });
-        if (childProcess.pid) {
-          childProcess.kill('SIGKILL');
+        if (process.pid) {
+          process.kill('SIGKILL');
         }
         resolve(undefined);
       }, 10000); // 10 second timeout
 
-      childProcess.on('close', (code, signal) => {
+      process.on('close', (code, signal) => { (code: number | null, signal: NodeJS.Signals | null) => {
         clearTimeout(timeout);
         state.status = 'stopped';
         logger.info('Process stopped', {
@@ -128,7 +128,7 @@ export class ProcessSupervisor {
         resolve(undefined);
       });
 
-      childProcess.on('error', (error) => {
+      process.on('error', (error) => { (error: Error) => {
         clearTimeout(timeout);
         logger.error('Error stopping process', {
           processId,
@@ -139,7 +139,7 @@ export class ProcessSupervisor {
       });
 
       // Send stop signal
-      childProcess.kill(signal);
+      process.kill(signal);
     }).finally(() => {
       // Clean up
       this.processes.delete(processId);
@@ -187,7 +187,7 @@ export class ProcessSupervisor {
    */
   private async spawnProcess(processId: string, config: ProcessConfig): Promise<void> {
     return new Promise((resolve, reject) => {
-      const childProcess = spawn(config.command, config.args, {
+      const process = spawn(config.command, config.args, {
         cwd: config.cwd,
         env: { ...process.env, ...config.env },
         stdio: ['pipe', 'pipe', 'pipe'], // Capture all streams
@@ -197,7 +197,7 @@ export class ProcessSupervisor {
       state.pid = process.pid;
 
       // Handle process events
-      childProcess.on('spawn', () => {
+      process.on('spawn', () => {
         logger.debug('Process spawned successfully', {
           processId,
           pid: process.pid,
@@ -206,7 +206,7 @@ export class ProcessSupervisor {
         resolve(undefined);
       });
 
-      childProcess.on('error', (error) => {
+      process.on('error', (error) => {
         logger.error('Process spawn error', {
           processId,
           error: error.message,
@@ -215,7 +215,7 @@ export class ProcessSupervisor {
       });
 
       // Handle unexpected exits
-      childProcess.on('close', (code, signal) => {
+      process.on('close', (code, signal) => {
         const state = this.processStates.get(processId);
         if (state && state.status !== 'stopped') {
           logger.warn('Process exited unexpectedly', {
@@ -231,8 +231,8 @@ export class ProcessSupervisor {
       });
 
       // Log stdout/stderr for debugging
-      if (childProcess.stdout) {
-        childProcess.stdout.on('data', (data) => {
+      if (process.stdout) {
+        process.stdout.on('data', (data) => {
           logger.debug('Process stdout', {
             processId,
             pid: process.pid,
@@ -241,8 +241,8 @@ export class ProcessSupervisor {
         });
       }
 
-      if (childProcess.stderr) {
-        childProcess.stderr.on('data', (data) => {
+      if (process.stderr) {
+        process.stderr.on('data', (data) => {
           logger.warn('Process stderr', {
             processId,
             pid: process.pid,
@@ -251,7 +251,7 @@ export class ProcessSupervisor {
         });
       }
 
-      this.processes.set(processId, childProcess);
+      this.processes.set(processId, process);
     });
   }
 

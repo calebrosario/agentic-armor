@@ -80,7 +80,8 @@ export class NetworkIsolator {
 
       if (existingNetworks.length > 0) {
         logger.warn('Network already exists, reusing', { taskId, networkName });
-        return existingNetworks[0].Id;
+        const network = existingNetworks[0];
+        return network?.Id || networkName;
       }
 
       // Create new isolated network
