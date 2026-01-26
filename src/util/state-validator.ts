@@ -37,9 +37,13 @@ export class StateValidator {
   /**
    * Generate SHA256 checksum for data
    * @param data - Data to checksum
-   * @returns SHA256 hash as hex string
+   * @returns Checksum string
    */
   public generateChecksum(data: any): string {
+    if (!data || typeof data !== 'object' || data === null) {
+      return '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+    }
+    
     const jsonString = JSON.stringify(data, Object.keys(data).sort());
     return createHash('sha256').update(jsonString).digest('hex');
   }
@@ -83,7 +87,7 @@ export class StateValidator {
     const checksumValid = currentChecksum === snapshot.checksum;
 
     if (!checksumValid) {
-      errors.push(`Checksum mismatch: expected ${snapshot.checksum}, got ${currentChecksum}`);
+      errors.push(\`Checksum mismatch: expected \${snapshot.checksum}, got \${currentChecksum}\`);
       recoveryOptions.push('restore-from-jsonl');
       recoveryOptions.push('use-last-known-good-state');
     }
@@ -113,7 +117,7 @@ export class StateValidator {
       }
     } catch (error: unknown) {
       dataIntegrity = false;
-      errors.push(`Data validation error: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(\`Data validation error: \${error instanceof Error ? error.message : String(error)}\`);
       recoveryOptions.push('emergency-state-reset');
     }
 
@@ -167,7 +171,7 @@ export class StateValidator {
       });
       throw new OpenCodeError(
         'STATE_SAVE_FAILED',
-        `Failed to save state to ${filePath}`,
+        \`Failed to save state to \${filePath}\`,
         { filePath, version }
       );
     }
@@ -185,14 +189,14 @@ export class StateValidator {
         return null;
       }
 
-      const fileContent = readFileSync(filePath, 'utf-8');
+      const fileContent = readFileSync(filePath, 'utf8');
       const stateWithValidation = JSON.parse(fileContent);
 
       // Extract snapshot from saved state
       const { _validation, ...snapshot } = stateWithValidation;
       snapshot.timestamp = new Date(snapshot.timestamp);
 
-      // Validate the snapshot
+      // Validate snapshot
       const validation = this.validateSnapshot(snapshot as StateSnapshot);
 
       if (validation.isValid) {
@@ -260,7 +264,7 @@ export class StateValidator {
             continue;
         }
       } catch (error: unknown) {
-        logger.warn(`Recovery option '${option}' failed`, {
+        logger.warn(\`Recovery option '\${option}' failed\`, {
           filePath,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -278,7 +282,7 @@ export class StateValidator {
    * @param snapshot - Current snapshot
    * @returns Recovered state
    */
-  private restoreFromJSONL(filePath: string, snapshot: StateSnapshot): Record<string, any> {
+  private restoreFromJSONL(filePath: string, snapshot: StateSnapshot): Record<string, any> | null {
     // In a real implementation, this would read from a JSONL log file
     // containing historical state changes
     logger.info('Attempting JSONL restoration (placeholder)', { filePath });
@@ -297,8 +301,8 @@ export class StateValidator {
    * @param filePath - State file path
    * @returns Backup state
    */
-  private restoreFromBackup(filePath: string): Record<string, any> {
-    const backupPath = `${filePath}.backup`;
+  private restoreFromBackup(filePath: string): Record<string, any> | null {
+    const backupPath = \`\${filePath}.backup\`;
 
     if (existsSync(backupPath)) {
       logger.info('Attempting backup restoration', { filePath, backupPath });
@@ -323,6 +327,7 @@ export class StateValidator {
    */
   private reconstructFromLogs(filePath: string): Record<string, any> {
     // In a real implementation, this would replay operations from logs
+    // containing historical state changes
     logger.info('Attempting log reconstruction (placeholder)', { filePath });
 
     // Placeholder: return a minimal reconstructed state
@@ -339,7 +344,8 @@ export class StateValidator {
    */
   public createBackup(filePath: string): void {
     try {
-      const backupPath = `${filePath}.backup`;
+      const backupPath = \`\${filePath}.backup\`;
+      
       if (existsSync(filePath)) {
         const content = readFileSync(filePath);
         writeFileSync(backupPath, content);
