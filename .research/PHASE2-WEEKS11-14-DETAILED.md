@@ -1642,3 +1642,676 @@ Acceptance Criteria:
 - [ ] Integration with existing systems
 
 ---
+
+---
+
+## Week 14: Integration & Alpha Release
+
+### Goals
+- Integrate all MVP components
+- Create comprehensive end-to-end tests
+- Write all documentation (README, API, user guide, developer guide)
+- Prepare and execute Alpha v0.1.0 release
+- Monitor deployment and gather feedback
+
+### Day 1-2: Integration (2 days)
+
+**Task 14.1: Component Integration Testing (8 hours)**
+
+Deliverable: `tests/integration/component-integration.test.ts`
+
+Requirements:
+- Test TaskLifecycle + TaskRegistry integration
+- Test TaskLifecycle + MultiLayerPersistence integration
+- Test TaskLifecycle + LockManager integration
+- Test MCP Tools + TaskLifecycle integration
+- Test MCP Tools + Docker Manager integration (mocked for now)
+- Test Hooks + TaskLifecycle integration
+- Test Hooks + MultiLayerPersistence integration
+
+Test Scenarios:
+```typescript
+describe('Component Integration', () => {
+  test('TaskLifecycle + TaskRegistry', async () => {
+    // Create task via lifecycle
+    // Verify task in registry
+    // Verify persistence layers created
+  });
+
+  test('TaskLifecycle + LockManager', async () => {
+    // Create task
+    // Verify lock acquired
+    // Verify lock released on completion
+  });
+
+  test('MCP Tools + TaskLifecycle', async () => {
+    // Call create_task_sandbox MCP tool
+    // Verify task created via lifecycle
+    // Verify task in registry
+  });
+
+  test('Hooks + TaskLifecycle', async () => {
+    // Register hooks
+    // Create task
+    // Verify hooks triggered
+    // Verify hook order and priority
+  });
+
+  test('Hooks + Persistence', async () => {
+    // Register hooks
+    // Create and complete task
+    // Verify checkpoint created
+    // Verify logs appended
+    // Verify decisions recorded
+  });
+});
+```
+
+Acceptance Criteria:
+- All component integrations tested
+- Data flow validated between components
+- Error propagation tested
+- Lock contention scenarios tested
+- Integration test suite created
+
+---
+
+**Task 14.2: End-to-End Workflow Testing (8 hours)**
+
+Deliverable: `tests/integration/e2e-workflows.test.ts`
+
+Requirements:
+- Complete user workflows from start to finish
+- Task creation → agent attachment → command execution → completion
+- Checkpoint creation → task resumption → completion
+- Multi-agent workflows (2+ agents working on same task)
+- Error recovery workflows (task failure, container crash)
+
+Test Scenarios:
+```typescript
+describe('End-to-End Workflows', () => {
+  test('Complete task lifecycle', async () => {
+    // 1. Create task
+    // 2. Attach agent
+    // 3. Execute commands
+    // 4. Complete task
+    // 5. Verify all persistence layers updated
+    // 6. Verify task status in registry
+  });
+
+  test('Checkpoint and resume workflow', async () => {
+    // 1. Create task
+    // 2. Start task and do work
+    // 3. Create checkpoint
+    // 4. Complete/cancel task
+    // 5. Create new task
+    // 6. Restore from checkpoint
+    // 7. Verify state restored
+    // 8. Resume work
+  });
+
+  test('Multi-agent collaborative workflow', async () => {
+    // 1. Create task
+    // 2. Attach agent A
+    // 3. Attach agent B (collaborative mode)
+    // 4. Agent A makes changes
+    // 5. Agent B makes changes
+    // 6. Verify optimistic locking works
+    // 7. Complete task
+  });
+
+  test('Error recovery workflow', async () => {
+    // 1. Create task
+    // 2. Simulate task failure
+    // 3. Verify error logged
+    // 4. Verify state corruption recovery
+    // 5. Verify cleanup completed
+  });
+
+  test('Docker container workflow', async () => {
+    // 1. Create task (with mocked Docker Manager)
+    // 2. Simulate container creation
+    // 3. Start container
+    // 4. Execute commands
+    // 5. Stop container
+    // 6. Remove container
+    // 7. Verify cleanup
+  });
+});
+```
+
+Acceptance Criteria:
+- All E2E workflows tested
+- Component interactions validated
+- Error scenarios tested
+- Recovery workflows validated
+- Integration test suite created
+
+---
+
+### Day 3: Documentation (1 day)
+
+**Task 14.3: Create README.md (4 hours)**
+
+Deliverable: `docs/README.md`
+
+Requirements:
+- Project overview and description
+- Installation instructions
+- Quick start guide
+- Architecture overview
+- Key features
+- Configuration guide
+- Common use cases
+- Troubleshooting section
+
+README Structure:
+```markdown
+# OpenCode Tools - Task Management with Docker Sandboxes
+
+## Overview
+[Brief description of the project]
+
+## Features
+[Key features list]
+
+## Installation
+[Step-by-step installation guide]
+
+## Quick Start
+[Get started in 5 minutes]
+
+## Architecture
+[High-level architecture diagram]
+[Component descriptions]
+
+## Configuration
+[Environment variables and config options]
+
+## Usage
+[Common use cases and examples]
+
+## Development
+[Developer setup instructions]
+
+## Troubleshooting
+[Common issues and solutions]
+
+## Contributing
+[How to contribute]
+```
+
+Acceptance Criteria:
+- README created with all sections
+- Installation instructions tested
+- Quick start guide verified
+- Architecture diagram included
+- Configuration documented
+- Troubleshooting section complete
+
+---
+
+**Task 14.4: Create API Documentation (3 hours)**
+
+Deliverable: `docs/API.md`
+
+Requirements:
+- All MCP tools documented
+- TaskRegistry API documented
+- TaskLifecycle API documented
+- MultiLayerPersistence API documented
+- Hook system documented
+- Command-line interface documented
+- Request/response formats
+- Error codes and messages
+
+API Doc Structure:
+```markdown
+# API Documentation
+
+## MCP Tools
+### create_task_sandbox
+### attach_agent_to_task
+### execute_in_task
+...
+
+## Internal APIs
+### TaskRegistry
+### TaskLifecycle
+### MultiLayerPersistence
+### HookSystem
+
+## Data Models
+### Task
+### Container
+### LogEntry
+...
+
+## Errors
+### OpenCodeError codes
+### HTTP status codes
+### Recovery strategies
+```
+
+Acceptance Criteria:
+- All MCP tools documented
+- All internal APIs documented
+- Data models documented
+- Error codes documented
+- Code examples provided
+
+---
+
+**Task 14.5: Create User Guide (2 hours)**
+
+Deliverable: `docs/USER_GUIDE.md`
+
+Requirements:
+- Getting started tutorial
+- Task creation tutorial
+- Agent attachment tutorial
+- Checkpoint management tutorial
+- Common workflows
+- Best practices
+- Tips and tricks
+
+User Guide Structure:
+```markdown
+# User Guide
+
+## Getting Started
+[Setup tutorial]
+
+## Your First Task
+[Step-by-step tutorial]
+
+## Working with Agents
+[Multi-agent workflows]
+
+## Checkpoints
+[Checkpoint management guide]
+
+## Advanced Workflows
+[Complex scenarios]
+
+## Best Practices
+[Tips and recommendations]
+
+## FAQ
+[Common questions]
+```
+
+Acceptance Criteria:
+- User guide created
+- Tutorials step-by-step
+- Workflows documented
+- Best practices included
+- FAQ section complete
+
+---
+
+**Task 14.6: Create Developer Guide (3 hours)**
+
+Deliverable: `docs/DEVELOPER_GUIDE.md`
+
+Requirements:
+- Development setup
+- Code organization
+- Architecture details
+- Testing guidelines
+- Adding new tools
+- Adding new hooks
+- Adding new commands
+- Deployment guide
+
+Developer Guide Structure:
+```markdown
+# Developer Guide
+
+## Development Setup
+[Local development instructions]
+
+## Project Structure
+[Directory and file organization]
+
+## Architecture
+[Detailed architecture diagrams]
+
+## Adding Features
+[How to add tools, hooks, commands]
+
+## Testing
+[How to run tests, coverage goals]
+
+## Deployment
+[How to deploy releases]
+
+## Contributing
+[Code review process, commit conventions]
+```
+
+Acceptance Criteria:
+- Developer guide created
+- Setup instructions clear
+- Architecture detailed
+- Contribution guidelines defined
+- Testing guide provided
+- Deployment guide included
+
+---
+
+### Day 4: Alpha Release Prep (1 day)
+
+**Task 14.7: Create Release Notes (4 hours)**
+
+Deliverable: `RELEASE-NOTES-alpha.md`
+
+Requirements:
+- Release version and date
+- Highlights and new features
+- Bug fixes
+- Known issues
+- Migration guide (if any)
+- Installation/upgrade instructions
+- Breaking changes
+- Next steps
+
+Release Notes Template:
+```markdown
+# OpenCode Tools v0.1.0 - Alpha Release
+
+## Release Date
+[Date]
+
+## What's New
+
+### Features
+- [New feature descriptions]
+
+### Improvements
+- [Improvement descriptions]
+
+## Bug Fixes
+- [Bug fixes]
+
+## Installation
+
+### Requirements
+[System requirements]
+
+### Upgrade Instructions
+[Upgrade guide]
+
+## Known Issues
+[Known limitations and issues]
+
+## Documentation
+[Links to guides]
+
+## Next Steps
+[Upcoming features]
+```
+
+Acceptance Criteria:
+- Release notes created
+- Version: v0.1.0-alpha
+- All new features listed
+- Bug fixes documented
+- Known issues listed
+- Installation instructions clear
+
+---
+
+**Task 14.8: Tag Alpha Release (2 hours)**
+
+Requirements:
+- Create git tag: v0.1.0-alpha
+- Tag should be annotated
+- Tag should include release notes
+- Tag should be signed (if configured)
+
+Commands:
+```bash
+# Create annotated tag
+git tag -a v0.1.0-alpha -m "OpenCode Tools Alpha Release v0.1.0"
+
+# Push tag to remote
+git push origin v0.1.0-alpha
+```
+
+Acceptance Criteria:
+- Tag created successfully
+- Tag is annotated
+- Tag pushed to remote
+- Tag format follows semver
+
+---
+
+**Task 14.9: Prepare Deployment Package (2 hours)**
+
+Requirements:
+- Create deployment directory
+- Include all necessary files
+- Create installation scripts
+- Verify package integrity
+- Create checksums
+
+Deployment Package Structure:
+```
+opencode-tools-v0.1.0-alpha/
+├── opencode-tools-*.tgz
+├── README.md
+├── CHANGELOG.md
+├── UPGRADE.md
+├── checksums.txt
+└── install.sh
+```
+
+Acceptance Criteria:
+- Deployment package created
+- Installation script functional
+- Checksums verified
+- Package tested locally
+
+---
+
+### Day 5: Alpha Release (1 day)
+
+**Task 14.10: Deploy Alpha Release (4 hours)**
+
+Requirements:
+- Deploy to staging environment first
+- Verify deployment
+- Promote to production
+- Verify production deployment
+- Monitor for issues
+- Prepare rollback plan
+
+Deployment Steps:
+```bash
+# 1. Deploy to staging
+./deploy.sh staging v0.1.0-alpha
+
+# 2. Verify staging
+./verify.sh staging
+
+# 3. Promote to production
+./deploy.sh production v0.1.0-alpha
+
+# 4. Verify production
+./verify.sh production
+
+# 5. Monitor deployment
+./monitor.sh production v0.1.0-alpha
+```
+
+Acceptance Criteria:
+- Staging deployment successful
+- Staging verification passed
+- Production deployment successful
+- Production verification passed
+- Monitoring active
+- Rollback plan ready
+
+---
+
+**Task 14.11: Monitor Deployment & Gather Feedback (4 hours)**
+
+Requirements:
+- Monitor application logs
+- Monitor error rates
+- Monitor performance metrics
+- Gather user feedback
+- Document issues
+- Create priority list for fixes
+
+Monitoring Checklist:
+```typescript
+interface DeploymentChecklist {
+  logs: string[];         // Log files to check
+  metrics: string[];       // Metrics to monitor
+  errors: string[];        // Error types to track
+  userFeedback: string[]; // Feedback channels
+}
+
+const checks: DeploymentChecklist = {
+  logs: ['app.log', 'error.log', 'access.log'],
+  metrics: ['task_creation_time', 'container_start_time', 'api_response_time'],
+  errors: ['OpenCodeError', 'DockerError', 'NetworkError'],
+  userFeedback: ['github issues', 'discord channel', 'email'],
+};
+```
+
+Acceptance Criteria:
+- Deployment monitoring active
+- Error tracking in place
+- Performance metrics collected
+- Feedback channels monitored
+- Issue list prioritized
+- Summary report created
+
+---
+
+## Week 14 Deliverables Summary
+
+**Files Created**:
+- `tests/integration/component-integration.test.ts` - Component integration tests
+- `tests/integration/e2e-workflows.test.ts` - E2E workflow tests
+- `docs/README.md` - Project README
+- `docs/API.md` - API documentation
+- `docs/USER_GUIDE.md` - User guide
+- `docs/DEVELOPER_GUIDE.md` - Developer guide
+- `RELEASE-NOTES-alpha.md` - Release notes
+- `deploy/` - Deployment scripts and package
+- `scripts/monitor.sh` - Monitoring script
+
+**Total Files**: 10+ files
+**Total Lines**: ~3,000+ lines
+
+**Integration Points**:
+- All MVP components integrated and tested
+- Documentation references all components
+- Deployment scripts reference all components
+
+**Acceptance Criteria for Week 14**:
+- [ ] Component integration tests created
+- [ ] E2E workflow tests created
+- [ ] README.md complete
+- [ ] API.md complete
+- [ ] User guide complete
+- [ ] Developer guide complete
+- [ ] Release notes created
+- [ ] Alpha release tagged
+- [ ] Deployment package created
+- [ ] Alpha release deployed
+- [ ] Monitoring active
+- [ ] Feedback collection started
+
+---
+
+## Phase 2 Complete Summary
+
+### Weeks 9-14 Status
+
+| Week | Focus | Status | Files | Lines |
+|------|-------|--------|-------|-------|
+| Week 9 | Task Registry & Persistence | ✅ COMPLETE | 8 | ~1,500 |
+| Week 10 | MCP Server | ✅ COMPLETE | 3 | ~550 |
+| Week 11 | Docker Integration | 📋 PLANNED | 15+ | ~1,800 |
+| Week 12 | Hooks System | 📋 PLANNED | 14 | ~2,500 |
+| Week 13 | User Commands | 📋 PLANNED | 13 | ~2,200 |
+| Week 14 | Integration & Release | 📋 PLANNED | 10+ | ~3,000 |
+
+**Total Planned**: Weeks 9-14
+**Total Implementation**: Weeks 9-10 (DONE)
+**Total Planning**: Weeks 11-14 (DONE)
+
+### Overall Acceptance Criteria
+
+#### Functional Gates
+- [ ] All 12 MVP features implemented (Weeks 9-10: PARTIAL, 11-14: PLANNED)
+- [ ] All components integrated (Weeks 9-10: YES, 11-14: PLANNED)
+- [ ] End-to-end tests pass (Weeks 9-10: PARTIAL, 14: PLANNED)
+- [ ] Alpha release deployed (PLANNED)
+
+#### Quality Gates
+- [ ] Test coverage >80% (Weeks 9-10: YES, 11-14: PLANNED)
+- [ ] Performance benchmarks met (Weeks 9-10: YES, 11-14: PLANNED)
+- [ ] No critical bugs (Weeks 9-10: YES, 11-14: PLANNED)
+- [ ] Documentation complete (Weeks 9-10: PARTIAL, 14: PLANNED)
+
+#### Approval Gates
+- [ ] Alpha release approved by QA (PENDING)
+- [ ] Alpha release approved by leadership (PENDING)
+- [ ] User feedback collected (PENDING)
+- [ ] Go/No-Go decision for Phase 3 (PENDING)
+
+### Next Steps After Week 14
+
+1. **Implement Weeks 11-14** (4 weeks)
+   - Week 11: Docker Integration (Docker Manager, volumes, networks)
+   - Week 12: Hooks System (task lifecycle, git, plan, safety)
+   - Week 13: User Commands (15 commands)
+   - Week 14: Integration & Alpha Release
+
+2. **Alpha Release Deployment** (Week 14)
+   - Deploy v0.1.0-alpha
+   - Monitor and gather feedback
+   - Create bug fix prioritization list
+
+3. **Phase 3 Planning** (After Alpha)
+   - Review Alpha feedback
+   - Plan Phase 3 (Stability Phase - v1.1 Beta)
+   - Decide on remaining edge cases (10 items)
+
+### Risk Assessment
+
+**Completed Work (Weeks 9-10)**:
+- Risk: LOW (All tested, good coverage)
+- Confidence: HIGH (Solid implementations)
+
+**Planned Work (Weeks 11-14)**:
+- Risk: MEDIUM (New implementations, integration points clear)
+- Confidence: HIGH (Detailed planning complete)
+
+---
+
+## Phase 2 Planning Complete
+
+**All Weeks 9-14 detailed planning documents created**
+- Week 11: 9 tasks with detailed acceptance criteria
+- Week 12: 13 tasks with detailed acceptance criteria
+- Week 13: 15 tasks with detailed acceptance criteria
+- Week 14: 11 tasks with detailed acceptance criteria
+
+**Total Tasks Planned**: 48 tasks
+**Total Files Planned**: 65+ files
+**Total Lines Planned**: 11,000+ lines
+
+**Planning Documents**:
+- `.research/PHASE2-PLANNING.md` - Overview plan
+- `.research/PHASE2-WEEKS11-14-DETAILED.md` - Detailed breakdown (this file)
+
+**Status**: Ready for implementation of Weeks 11-14
+
+---
