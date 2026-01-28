@@ -921,3 +921,724 @@ Acceptance Criteria:
 - [ ] 100% code coverage
 
 ---
+
+---
+
+## Week 13: User Commands
+
+### Goals
+- Implement 6 task management commands
+- Implement 2 checkpoint commands
+- Implement 5 memory commands
+- Integrate all commands with existing systems
+
+### Day 1-3: Task Management Commands (3 days)
+
+**Task 13.1: Implement /create-task Command (6 hours)**
+
+Deliverable: `commands/task-management/create-task.ts`
+
+Requirements:
+- Command validation (required parameters)
+- Task creation via TaskLifecycle
+- Configuration support (metadata, resource limits)
+- Error handling and user-friendly messages
+- Command registration with CLI framework
+
+Command Interface:
+```typescript
+interface CreateTaskCommand {
+  name: string;
+  description?: string;
+  owner?: string;
+  metadata?: Record<string, any>;
+  resourceLimits?: ResourceLimits;
+  workspacePath?: string;
+}
+```
+
+Implementation:
+```typescript
+import { Command } from 'commander';
+import { taskLifecycle } from '../../task/lifecycle';
+import { TaskConfig } from '../../types';
+
+export const createTaskCommand = new Command('create-task')
+  .description('Create a new task')
+  .argument('<name>', 'Task name')
+  .option('-d, --description <string>', 'Task description')
+  .option('-o, --owner <string>', 'Task owner')
+  .option('-m, --metadata <JSON>', 'Task metadata as JSON')
+  .action(async (name, options) => {
+    try {
+      const config: TaskConfig = {
+        name,
+        description: options.description,
+        owner: options.owner,
+        metadata: options.metadata ? JSON.parse(options.metadata) : undefined,
+      };
+
+      const task = await taskLifecycle.createTask(config);
+      
+      console.log('✅ Task created successfully');
+      console.log(`   Task ID: ${task.id}`);
+      console.log(`   Status: ${task.status}`);
+      console.log(`   Created At: ${task.createdAt.toISOString()}`);
+    } catch (error: any) {
+      console.error('❌ Failed to create task:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Command registered with CLI framework
+- Required parameter validation
+- Task created via TaskLifecycle
+- Configuration options supported
+- Error handling with user-friendly messages
+- Success message with task details
+
+---
+
+**Task 13.2: Implement /resume-task Command (4 hours)**
+
+Deliverable: `commands/task-management/resume-task.ts`
+
+Requirements:
+- Validate task exists and is pending
+- Attach agent to task via TaskLifecycle.startTask()
+- Load last checkpoint if available
+- Set task to running state
+
+Implementation:
+```typescript
+export const resumeTaskCommand = new Command('resume-task')
+  .description('Resume a pending task')
+  .argument('<taskId>', 'Task ID to resume')
+  .option('-a, --agent <string>', 'Agent ID', 'system')
+  .option('-c, --checkpoint <string>', 'Checkpoint ID to restore')
+  .action(async (taskId, options) => {
+    try {
+      // If checkpoint specified, restore it first
+      if (options.checkpoint) {
+        await restoreCheckpoint(taskId, options.checkpoint);
+      }
+      
+      const task = await taskLifecycle.startTask(taskId, options.agent);
+      
+      console.log('✅ Task resumed successfully');
+      console.log(`   Task ID: ${task.id}`);
+      console.log(`   Status: ${task.status}`);
+    } catch (error: any) {
+      console.error('❌ Failed to resume task:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task existence validation
+- Agent attachment via startTask
+- Optional checkpoint restoration
+- Task state set to running
+- Error handling
+
+---
+
+**Task 13.3: Implement /list-tasks Command (4 hours)**
+
+Deliverable: `commands/task-management/list-tasks.ts`
+
+Requirements:
+- List tasks with optional filters
+- Support filtering by status, owner
+- Support limit and offset for pagination
+- Display task summary
+
+Implementation:
+```typescript
+export const listTasksCommand = new Command('list-tasks')
+  .description('List all tasks')
+  .option('-s, --status <status>', 'Filter by status')
+  .option('-o, --owner <string>', 'Filter by owner')
+  .option('-l, --limit <number>', 'Limit results', '100')
+  .option('--offset <number>', 'Offset for pagination', '0')
+  .option('-v, --verbose', 'Show detailed information', false)
+  .action(async (options) => {
+    try {
+      const tasks = await taskRegistry.list({
+        status: options.status,
+        owner: options.owner,
+        limit: options.limit,
+        offset: options.offset,
+      });
+
+      displayTasks(tasks, options.verbose);
+    } catch (error: any) {
+      console.error('❌ Failed to list tasks:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Filter by status
+- Filter by owner
+- Pagination support (limit, offset)
+- Verbose mode for details
+- Formatted output
+
+---
+
+**Task 13.4: Implement /detach Command (3 hours)**
+
+Deliverable: `commands/task-management/detach.ts`
+
+Requirements:
+- Validate task exists and has attached agent
+- Detach agent from task
+- Keep task in current state (don't stop)
+
+Implementation:
+```typescript
+export const detachCommand = new Command('detach')
+  .description('Detach agent from task')
+  .argument('<taskId>', 'Task ID')
+  .option('-a, --agent <string>', 'Agent ID to detach')
+  .action(async (taskId, options) => {
+    try {
+      // Validate task and agent
+      const task = await taskRegistry.getById(taskId);
+      if (!task) {
+        console.error('❌ Task not found');
+        process.exit(1);
+      }
+
+      // Log detachment (actual detachment handled by MCP tool)
+      logger.info('Agent detached from task', { taskId, agentId: options.agent });
+      
+      console.log('✅ Agent detached from task');
+      console.log(`   Task ID: ${task.id}`);
+      console.log(`   Agent: ${options.agent}`);
+    } catch (error: any) {
+      console.error('❌ Failed to detach agent:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Agent validation
+- Detachment logged
+- Error handling
+- Success message
+
+---
+
+**Task 13.5: Implement /complete-task Command (4 hours)**
+
+Deliverable: `commands/task-management/complete-task.ts`
+
+Requirements:
+- Validate task exists and is running
+- Set task to completed state
+- Capture result/output
+- Log completion
+
+Implementation:
+```typescript
+export const completeTaskCommand = new Command('complete-task')
+  .description('Mark a task as completed')
+  .argument('<taskId>', 'Task ID')
+  .option('-r, --result <JSON>', 'Task result as JSON')
+  .option('-m, --message <string>', 'Completion message')
+  .action(async (taskId, options) => {
+    try {
+      const result: TaskResult = {
+        success: true,
+        data: options.result ? JSON.parse(options.result) : undefined,
+      };
+
+      const task = await taskLifecycle.completeTask(taskId, result);
+      
+      console.log('✅ Task completed successfully');
+      console.log(`   Task ID: ${task.id}`);
+      console.log(`   Status: ${task.status}`);
+      console.log(`   Completed At: ${new Date().toISOString()}`);
+    } catch (error: any) {
+      console.error('❌ Failed to complete task:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Completion via TaskLifecycle
+- Result capture supported
+- Message capture supported
+- Success/error messages
+
+---
+
+**Task 13.6: Implement /cleanup-task Command (3 hours)**
+
+Deliverable: `commands/task-management/cleanup-task.ts`
+
+Requirements:
+- Validate task exists
+- Stop task if running
+- Remove task from registry
+- Cleanup persistence layers
+- Cleanup Docker container
+
+Implementation:
+```typescript
+export const cleanupTaskCommand = new Command('cleanup-task')
+  .description('Cleanup a task and all its resources')
+  .argument('<taskId>', 'Task ID')
+  .option('--force', 'Force cleanup without confirmation', false)
+  .action(async (taskId, options) => {
+    try {
+      const task = await taskRegistry.getById(taskId);
+      if (!task) {
+        console.error('❌ Task not found');
+        process.exit(1);
+      }
+
+      if (!options.force) {
+        const confirm = await promptConfirm(`Are you sure you want to cleanup task ${taskId}?`);
+        if (!confirm) {
+          console.log('Cleanup cancelled');
+          process.exit(0);
+        }
+      }
+
+      // Stop Docker container if running
+      if (task.status === 'running') {
+        await dockerManager.stopContainer(containerId);
+      }
+
+      // Delete task (cleanup persistence)
+      await taskLifecycle.deleteTask(taskId);
+
+      console.log('✅ Task cleaned up successfully');
+      console.log(`   Task ID: ${taskId}`);
+    } catch (error: any) {
+      console.error('❌ Failed to cleanup task:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Docker container stopped (if running)
+- Persistence cleanup
+- Confirmation prompt
+- Force option
+- Success/error messages
+
+---
+
+### Day 4: Checkpoint Commands (1 day)
+
+**Task 13.7: Implement /checkpoint Command (4 hours)**
+
+Deliverable: `commands/checkpoint/checkpoint.ts`
+
+Requirements:
+- Validate task exists
+- Create checkpoint via MultiLayerPersistence
+- Include description
+- Return checkpoint ID
+
+Implementation:
+```typescript
+export const checkpointCommand = new Command('checkpoint')
+  .description('Create a checkpoint for a task')
+  .argument('<taskId>', 'Task ID')
+  .option('-d, --description <string>', 'Checkpoint description')
+  .action(async (taskId, options) => {
+    try {
+      const checkpointId = await multiLayerPersistence.createCheckpoint(
+        taskId,
+        options.description || `Checkpoint created at ${new Date().toISOString()}`
+      );
+
+      console.log('✅ Checkpoint created successfully');
+      console.log(`   Task ID: ${taskId}`);
+      console.log(`   Checkpoint ID: ${checkpointId}`);
+    } catch (error: any) {
+      console.error('❌ Failed to create checkpoint:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Checkpoint creation
+- Description support
+- Checkpoint ID returned
+- Error handling
+
+---
+
+**Task 13.8: Implement /restore-checkpoint Command (4 hours)**
+
+Deliverable: `commands/checkpoint/restore-checkpoint.ts`
+
+Requirements:
+- Validate task exists
+- List available checkpoints
+- Validate checkpoint ID
+- Restore checkpoint via MultiLayerPersistence
+- Set task to pending state
+
+Implementation:
+```typescript
+export const restoreCheckpointCommand = new Command('restore-checkpoint')
+  .description('Restore a task from a checkpoint')
+  .argument('<taskId>', 'Task ID')
+  .option('-c, --checkpoint <string>', 'Checkpoint ID to restore')
+  .option('-l, --list', 'List available checkpoints', false)
+  .action(async (taskId, options) => {
+    try {
+      if (options.list) {
+        const checkpoints = await multiLayerPersistence.listCheckpoints(taskId);
+        
+        console.log('Available checkpoints:');
+        checkpoints.forEach(cp => {
+          console.log(`  - ${cp.id}: ${cp.description}`);
+          console.log(`    Created: ${cp.timestamp}`);
+        });
+        return;
+      }
+
+      if (!options.checkpoint) {
+        console.error('❌ Checkpoint ID required (or use --list)');
+        process.exit(1);
+      }
+
+      const task = await taskRegistry.getById(taskId);
+      if (!task) {
+        console.error('❌ Task not found');
+        process.exit(1);
+      }
+
+      await multiLayerPersistence.restoreCheckpoint(taskId, options.checkpoint);
+      
+      // Set task to pending
+      await taskRegistry.update(taskId, { status: 'pending' });
+      
+      console.log('✅ Checkpoint restored successfully');
+      console.log(`   Task ID: ${taskId}`);
+      console.log(`   Checkpoint ID: ${options.checkpoint}`);
+      console.log(`   Task Status: pending`);
+    } catch (error: any) {
+      console.error('❌ Failed to restore checkpoint:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- List checkpoints option
+- Checkpoint validation
+- Checkpoint restoration
+- Task state reset to pending
+- Error handling
+
+---
+
+### Day 5: Memory Commands (1 day)
+
+**Task 13.9: Implement /task-history Command (4 hours)**
+
+Deliverable: `commands/memory/task-history.ts`
+
+Requirements:
+- Validate task exists
+- Load and display task history from JSONL logs
+- Support filtering (level, date range)
+- Support limit for output
+
+Implementation:
+```typescript
+export const taskHistoryCommand = new Command('task-history')
+  .description('Show task execution history')
+  .argument('<taskId>', 'Task ID')
+  .option('-l, --level <string>', 'Filter by log level')
+  .option('--limit <number>', 'Limit number of entries', '50')
+  .option('--start <date>', 'Start date filter')
+  .option('--end <date>', 'End date filter')
+  .action(async (taskId, options) => {
+    try {
+      const logs = await multiLayerPersistence.loadLogs(taskId, {
+        level: options.level,
+        limit: options.limit,
+        startDate: options.start,
+        endDate: options.end,
+      });
+
+      displayLogs(logs);
+    } catch (error: any) {
+      console.error('❌ Failed to load task history:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Load logs from JSONL
+- Filtering support (level, date, limit)
+- Formatted output
+- Error handling
+
+---
+
+**Task 13.10: Implement /task-executions Command (4 hours)**
+
+Deliverable: `commands/memory/task-executions.ts`
+
+Requirements:
+- Validate task exists
+- Display task execution statistics
+- Show container info
+- Show resource usage
+
+Implementation:
+```typescript
+export const taskExecutionsCommand = new Command('task-executions')
+  .description('Show task execution details')
+  .argument('<taskId>', 'Task ID')
+  .action(async (taskId) => {
+    try {
+      const task = await taskRegistry.getById(taskId);
+      if (!task) {
+        console.error('❌ Task not found');
+        process.exit(1);
+      }
+
+      displayTaskDetails(task);
+      
+      // Get container info if task is running
+      if (task.status === 'running' && task.metadata?.containerId) {
+        const container = await dockerManager.inspectContainer(task.metadata.containerId);
+        displayContainerInfo(container);
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to get task executions:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Display task details
+- Display container info (if running)
+- Display resource usage
+- Error handling
+
+---
+
+**Task 13.11: Implement /task-decisions Command (3 hours)**
+
+Deliverable: `commands/memory/task-decisions.ts`
+
+Requirements:
+- Validate task exists
+- Load and display agent decisions from decisions.md
+- Support filtering by agent
+- Support limit for output
+
+Implementation:
+```typescript
+export const taskDecisionsCommand = new Command('task-decisions')
+  .description('Show agent decisions for a task')
+  .argument('<taskId>', 'Task ID')
+  .option('-a, --agent <string>', 'Filter by agent ID')
+  .option('--limit <number>', 'Limit number of decisions', '20')
+  .action(async (taskId, options) => {
+    try {
+      const decisions = await multiLayerPersistence.loadDecisions(taskId);
+      
+      let filtered = decisions;
+      if (options.agent) {
+        filtered = decisions.filter(d => d.agentId === options.agent);
+      }
+
+      const limited = filtered.slice(0, options.limit || 20);
+
+      displayDecisions(limited);
+    } catch (error: any) {
+      console.error('❌ Failed to load task decisions:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task validation
+- Load decisions from decisions.md
+- Agent filtering
+- Limit support
+- Formatted output
+- Error handling
+
+---
+
+**Task 13.12: Implement /find-task Command (3 hours)**
+
+Deliverable: `commands/memory/find-task.ts`
+
+Requirements:
+- Search tasks by name or metadata
+- Support filtering by status, owner
+- Display matching tasks
+- Fuzzy matching support
+
+Implementation:
+```typescript
+export const findTaskCommand = new Command('find-task')
+  .description('Find tasks by name or metadata')
+  .argument('<query>', 'Search query')
+  .option('-s, --status <status>', 'Filter by status')
+  .option('-o, --owner <string>', 'Filter by owner')
+  .option('-m, --metadata <JSON>', 'Filter by metadata')
+  .action(async (query, options) => {
+    try {
+      const allTasks = await taskRegistry.list();
+      
+      const matches = allTasks.filter(task => {
+        const nameMatch = task.name.toLowerCase().includes(query.toLowerCase());
+        const metaMatch = task.metadata ? JSON.stringify(task.metadata).toLowerCase().includes(query.toLowerCase()) : false;
+        
+        let statusMatch = true;
+        if (options.status && task.status !== options.status) {
+          statusMatch = false;
+        }
+        
+        let ownerMatch = true;
+        if (options.owner && task.owner !== options.owner) {
+          ownerMatch = false;
+        }
+        
+        let metaMatch = true;
+        if (options.metadata) {
+          const meta = JSON.parse(options.metadata);
+          const taskMeta = task.metadata || {};
+          metaMatch = Object.keys(meta).every(key => 
+            taskMeta[key] === meta[key]
+          );
+        }
+        
+        return (nameMatch || metaMatch) && statusMatch && ownerMatch && metaMatch;
+      });
+
+      displaySearchResults(matches, query);
+    } catch (error: any) {
+      console.error('❌ Failed to find tasks:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Name and metadata search
+- Fuzzy matching
+- Status and owner filtering
+- Formatted search results
+- Error handling
+
+---
+
+**Task 13.13: Implement /task-stats Command (3 hours)**
+
+Deliverable: `commands/memory/task-stats.ts`
+
+Requirements:
+- Display task statistics
+- Count tasks by status
+- Show most recent tasks
+- Show task distribution by owner
+
+Implementation:
+```typescript
+export const taskStatsCommand = new Command('task-stats')
+  .description('Show task statistics')
+  .action(async () => {
+    try {
+      const allTasks = await taskRegistry.list();
+      
+      // Count by status
+      const statusCounts = allTasks.reduce((acc, task) => {
+        acc[task.status] = (acc[task.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Count by owner
+      const ownerCounts = allTasks.reduce((acc, task) => {
+        const owner = task.owner || 'none';
+        acc[owner] = (acc[owner] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      displayStatistics(allTasks, statusCounts, ownerCounts);
+    } catch (error: any) {
+      console.error('❌ Failed to get task stats:', error.message);
+      process.exit(1);
+    }
+  });
+```
+
+Acceptance Criteria:
+- Task statistics displayed
+- Status distribution shown
+- Owner distribution shown
+- Summary statistics
+- Error handling
+
+---
+
+## Week 13 Deliverables Summary
+
+**Files Created**:
+- `commands/task-management/create-task.ts`
+- `commands/task-management/resume-task.ts`
+- `commands/task-management/list-tasks.ts`
+- `commands/task-management/detach.ts`
+- `commands/task-management/complete-task.ts`
+- `commands/task-management/cleanup-task.ts`
+- `commands/checkpoint/checkpoint.ts`
+- `commands/checkpoint/restore-checkpoint.ts`
+- `commands/memory/task-history.ts`
+- `commands/memory/task-executions.ts`
+- `commands/memory/task-decisions.ts`
+- `commands/memory/find-task.ts`
+- `commands/memory/task-stats.ts`
+
+**Total Files**: 13 command files
+
+**Integration Points**:
+- All commands use TaskLifecycle
+- Checkpoint commands use MultiLayerPersistence
+- Task display uses TaskRegistry
+- Cleanup command uses DockerManager
+
+**Acceptance Criteria for Week 13**:
+- [ ] 6 task management commands implemented
+- [ ] 2 checkpoint commands implemented
+- [ ] 5 memory commands implemented
+- [ ] Command registration with CLI framework
+- [ ] Error handling for all commands
+- [ ] User-friendly messages
+- [ ] Integration with existing systems
+
+---
