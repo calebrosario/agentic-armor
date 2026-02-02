@@ -16,14 +16,26 @@ export interface TaskFilters {
 export class TaskRegistry {
   private static instance: TaskRegistry;
   private db: Database.Database | null = null;
+  private ready: Promise<void> | null = null;
 
   private constructor() {}
 
   public static getInstance(): TaskRegistry {
     if (!TaskRegistry.instance) {
       TaskRegistry.instance = new TaskRegistry();
+      // Auto-initialize when instance is created
+      TaskRegistry.instance.ready = TaskRegistry.instance.initialize().catch(err => {
+        logger.error('Failed to auto-initialize TaskRegistry', { err });
+        throw err;
+      });
     }
     return TaskRegistry.instance;
+  }
+
+  private async ensureReady(): Promise<void> {
+    if (this.ready) {
+      await this.ready;
+    }
   }
 
   public async initialize(): Promise<void> {
@@ -41,6 +53,8 @@ export class TaskRegistry {
   // CRUD Operations
 
   public async create(task: Task): Promise<Task> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
@@ -72,6 +86,8 @@ export class TaskRegistry {
   }
 
   public async getById(id: string): Promise<Task | null> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
@@ -92,6 +108,8 @@ export class TaskRegistry {
   }
 
   public async update(id: string, updates: Partial<Task>): Promise<Task> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
@@ -129,6 +147,8 @@ export class TaskRegistry {
   }
 
   public async delete(id: string): Promise<void> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
@@ -149,6 +169,8 @@ export class TaskRegistry {
   }
 
   public async list(filters?: TaskFilters): Promise<Task[]> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
@@ -211,6 +233,8 @@ export class TaskRegistry {
   // Batch Operations
 
   public async bulkInsert(tasks: Task[]): Promise<Task[]> {
+    await this.ensureReady();
+    
     if (!this.db) {
       throw new OpenCodeError('REGISTRY_NOT_INITIALIZED', 'TaskRegistry not initialized');
     }
