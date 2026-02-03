@@ -48,6 +48,7 @@ export function createPlanFinalizerHook(): AfterTaskCompleteHook {
       throw new Error("Failed to finalize Plan.md: " + errorMessage);
     }
   };
+  }
 
 function appendExecutionNotes(planContent: string, result: TaskResult): string {
   const timestamp = new Date().toISOString();
