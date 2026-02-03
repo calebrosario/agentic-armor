@@ -18,7 +18,7 @@ describe('DockerHelper', () => {
   describe('detectSocket', () => {
     it('should use DOCKER_SOCKET env var override', () => {
       process.env.DOCKER_SOCKET = '/custom/docker.sock';
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       
       expect(() => helper.detectSocket()).not.toThrow();
       expect(process.env.DOCKER_SOCKET).toBe('/custom/docker.sock');
@@ -32,7 +32,7 @@ describe('DockerHelper', () => {
         configurable: true,
       });
       
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       const socket = helper.detectSocket();
       
       expect(socket).toContain('/var/run/docker.sock');
@@ -46,7 +46,7 @@ describe('DockerHelper', () => {
         configurable: true,
       });
       
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       
       expect(() => helper.detectSocket()).toThrow(OpenCodeError);
     });
@@ -59,7 +59,7 @@ describe('DockerHelper', () => {
         configurable: true,
       });
       
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       
       expect(() => helper.detectSocket()).toThrow(OpenCodeError);
     });
@@ -67,7 +67,7 @@ describe('DockerHelper', () => {
 
   describe('isAvailable', () => {
     it('should return false when socket not found', () => {
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       jest.spyOn(helper, 'detectSocket').mockImplementation(() => {
         throw new OpenCodeError(ERROR_CODES.DOCKER_SOCKET_NOT_FOUND, 'Not found');
       });
@@ -78,7 +78,7 @@ describe('DockerHelper', () => {
     });
 
     it('should cache availability result', () => {
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       jest.spyOn(helper, 'detectSocket').mockImplementation(() => {
         throw new OpenCodeError(ERROR_CODES.DOCKER_SOCKET_NOT_FOUND, 'Not found');
       });
@@ -95,7 +95,7 @@ describe('DockerHelper', () => {
 
   describe('createClient', () => {
     it('should create Dockerode client when Docker available', () => {
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       jest.spyOn(helper, 'isAvailable').mockReturnValue(true);
       jest.spyOn(helper, 'detectSocket').mockReturnValue('/var/run/docker.sock');
       
@@ -106,14 +106,14 @@ describe('DockerHelper', () => {
     });
 
     it('should throw when Docker not available', () => {
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       jest.spyOn(helper, 'isAvailable').mockReturnValue(false);
       
       expect(() => helper.createClient()).toThrow(OpenCodeError);
     });
 
     it('should reuse cached client', () => {
-      const helper = new DockerHelper();
+      const helper = DockerHelper.getInstance();
       jest.spyOn(helper, 'isAvailable').mockReturnValue(true);
       jest.spyOn(helper, 'detectSocket').mockReturnValue('/var/run/docker.sock');
       
