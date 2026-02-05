@@ -34,9 +34,12 @@
     "commander": "^14.0.2",
     "dockerode": "^4.0.2",
     "dotenv": "^16.3.1",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
     "emittery": "^1.0.1",
     "eventemitter3": "^5.0.1",
     "luxon": "^3.4.4",
+    "pg": "^8.18.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "zod": "^3.22.4"

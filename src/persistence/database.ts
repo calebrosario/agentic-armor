@@ -1,14 +1,14 @@
-// Database Manager - Phase 1: Critical Edge Cases
-// This module will handle SQLite database operations with concurrency support
+// Database Manager - PostgreSQL Integration (Phase 1: Drizzle ORM)
+// This module now uses Drizzle ORM for PostgreSQL database operations
 
-import Database from 'better-sqlite3';
-import { logger } from '../util/logger';
-import { DATABASE_PATH } from '../config';
-import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { logger } from "../util/logger";
+import * as schema from "./schema";
 
 export class DatabaseManager {
-  private db: Database.Database | null = null;
+  private db: ReturnType<typeof drizzle> | null = null;
+  private pool: Pool | null = null;
   private static instance: DatabaseManager;
 
   private constructor() {}
@@ -22,78 +22,58 @@ export class DatabaseManager {
 
   public async initialize(): Promise<void> {
     try {
-      // Ensure database directory exists
-      mkdirSync(dirname(DATABASE_PATH), { recursive: true });
-
-      // Initialize SQLite database
-      this.db = new Database(DATABASE_PATH);
-
-      // Enable WAL mode for better concurrency
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma('synchronous = NORMAL');
-      this.db.pragma('cache_size = 1000');
-      this.db.pragma('temp_store = memory');
-
-      logger.info('✅ SQLite database initialized', {
-        path: DATABASE_PATH,
-        journalMode: 'WAL',
+      // Create connection pool for PostgreSQL
+      this.pool = new Pool({
+        connectionString:
+          process.env.DATABASE_URL || "postgresql://localhost:5432/opencode",
+        max: 20, // Maximum number of connections
+        idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+        connectionTimeoutMillis: 2000, // Connection timeout 2 seconds
       });
 
-      // Initialize tables (to be implemented)
-      this.initializeTables();
+      // Initialize Drizzle ORM with schema
+      this.db = drizzle({
+        client: this.pool,
+        schema,
+      });
 
+      logger.info("✅ PostgreSQL database initialized with Drizzle ORM", {
+        url: process.env.DATABASE_URL || "postgresql://localhost:5432/opencode",
+        poolSize: 20,
+      });
+
+      // Create tables automatically via Drizzle migrations
+      // (Migrations will be run separately)
     } catch (error: unknown) {
-      logger.error('❌ Failed to initialize database', {
+      logger.error("❌ Failed to initialize PostgreSQL database", {
         error: error instanceof Error ? error.message : String(error),
-        path: DATABASE_PATH,
       });
       throw error;
     }
   }
 
-  private initializeTables(): void {
-    if (!this.db) return;
-
-    // Tasks table (Phase 2 - MVP Core)
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        status TEXT NOT NULL,
-        owner TEXT,
-        metadata TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `);
-
-    // Create indexes for better query performance
-    this.db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-      CREATE INDEX IF NOT EXISTS idx_tasks_owner ON tasks(owner);
-      CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
-    `);
-
-    logger.info('Database tables initialized');
-  }
-
-  public getDatabase(): Database.Database {
+  public getDatabase(): ReturnType<typeof drizzle> {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error("Database not initialized");
     }
     return this.db;
   }
 
   public async close(): Promise<void> {
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-      logger.info('Database connection closed');
+    if (this.pool) {
+      await this.pool.end();
+      this.pool = null;
+      logger.info("Database connection closed");
     }
+    this.db = null;
   }
 }
 
 // Initialize Database Manager
-DatabaseManager.getInstance().initialize().catch((error) => {
-  logger.error('Failed to initialize Database Manager', { error: error instanceof Error ? error.message : String(error) });
-});
+DatabaseManager.getInstance()
+  .initialize()
+  .catch((error) => {
+    logger.error("Failed to initialize Database Manager", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
