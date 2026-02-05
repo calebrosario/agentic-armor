@@ -14,4 +14,4 @@ export const tasks = pgTable("tasks", {
 // Schema types export
 export type TaskInsert = typeof tasks.$inferInsert;
 export type TaskSelect = typeof tasks.$inferSelect;
-export type TaskUpdate = typeof tasks.$inferSet;
+export type TaskUpdate = Partial<typeof tasks.$inferInsert>;
