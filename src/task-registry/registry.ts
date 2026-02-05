@@ -147,22 +147,30 @@ export class TaskRegistry {
         whereConditions.push(eq(schema.tasks.owner, filters.owner));
       }
 
-      let query = this.db.select().from(schema.tasks);
+      // Build query with optional conditions
+      let queryBuilder = this.db.select().from(schema.tasks);
 
       if (whereConditions.length > 0) {
-        query = query.where(and(...whereConditions) as any);
+        queryBuilder = queryBuilder.where(
+          and(...whereConditions),
+        ) as typeof queryBuilder;
       }
 
       if (filters.limit) {
-        query = query.limit(filters.limit);
+        queryBuilder = queryBuilder.limit(filters.limit) as typeof queryBuilder;
       }
+
       if (filters.offset) {
-        query = query.offset(filters.offset);
+        queryBuilder = queryBuilder.offset(
+          filters.offset,
+        ) as typeof queryBuilder;
       }
 
-      query = query.orderBy(desc(schema.tasks.createdAt));
+      queryBuilder = queryBuilder.orderBy(
+        desc(schema.tasks.createdAt),
+      ) as typeof queryBuilder;
 
-      const results = await query;
+      const results = await queryBuilder;
       return results.map((row) => this.rowToTask(row));
     } catch (error) {
       logger.error("Failed to list tasks", { error });
