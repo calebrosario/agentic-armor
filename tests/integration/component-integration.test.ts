@@ -51,9 +51,14 @@ describe("Component Integration Tests", () => {
   const testAgentId = "integration-test-agent";
 
   beforeAll(async () => {
-    await DatabaseManager.getInstance().initialize();
-    await setupTestDatabase();
-    await taskRegistry.initialize();
+    try {
+      await DatabaseManager.getInstance().initialize();
+      await setupTestDatabase();
+      await taskRegistry.initialize();
+    } catch (error) {
+      console.error("Failed to initialize test environment:", error);
+      process.exit(1);
+    }
   });
 
   beforeEach(async () => {

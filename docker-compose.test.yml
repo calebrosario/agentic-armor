@@ -1,6 +1,6 @@
 version: "3.8"
 
-services:
+  services:
   postgres:
     image: postgres:16-alpine
     container_name: opencode-postgres-test
@@ -13,13 +13,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    command:
-      - sh
-      - -c
-      - |
-        echo "host all all all md5" >> /var/lib/postgresql/data/pg_hba.conf
-        echo "local all all md5" >> /var/lib/postgresql/data/pg_hba.conf
-        docker-entrypoint.sh postgres
+      - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opencode_test -d opencode_test"]
       interval: 5s

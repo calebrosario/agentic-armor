@@ -10,6 +10,8 @@ import { logger } from "../../src/util/logger";
  * Setup test database with isolation
  * Creates a fresh database connection and clears existing data
  */
+let transactionActive = false;
+
 export async function setupTestDatabase(): Promise<void> {
   try {
     const dbManager = DatabaseManager.getInstance();
@@ -108,6 +110,7 @@ export async function beginTestTransaction(): Promise<void> {
 
     try {
       await db.execute(sql`BEGIN`);
+      transactionActive = true;
       logger.debug("Test transaction begun");
     } catch (transactionError) {
       const txErrorMessage =
@@ -115,7 +118,7 @@ export async function beginTestTransaction(): Promise<void> {
           ? transactionError.message
           : String(transactionError);
 
-      // Check if the error is about transactions in read-only mode or similar
+      // Check if error is about transactions in read-only mode or similar
       if (
         txErrorMessage.includes("read only") ||
         txErrorMessage.includes("cannot start")
@@ -146,12 +149,18 @@ export async function beginTestTransaction(): Promise<void> {
  * Reverts all changes made during test
  */
 export async function rollbackTestTransaction(): Promise<void> {
+  if (!transactionActive) {
+    logger.debug("No active transaction to rollback");
+    return;
+  }
+
   try {
     const dbManager = DatabaseManager.getInstance();
     const db = dbManager.getDatabase();
 
     try {
       await db.execute(sql`ROLLBACK`);
+      transactionActive = false;
       logger.debug("Test transaction rolled back");
     } catch (rollbackError) {
       const rbErrorMessage =
@@ -164,6 +173,7 @@ export async function rollbackTestTransaction(): Promise<void> {
         rbErrorMessage.includes("no transaction") ||
         rbErrorMessage.includes("cannot rollback")
       ) {
+        transactionActive = false;
         logger.debug("No active transaction to rollback", {
           error: rbErrorMessage,
         });
