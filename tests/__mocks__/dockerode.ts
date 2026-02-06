@@ -28,15 +28,17 @@ export function createMockDockerode(): MockedDockerode {
   const mockStream = createMockStream();
 
   return {
-    createNetwork: jest.fn().mockResolvedValue({
-      id: "test-network-id",
-      name: "test-network",
-    }),
-    getNetwork: jest.fn().mockReturnValue({
-      connect: jest.fn().mockResolvedValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined),
-      inspect: jest.fn().mockResolvedValue({
+    createNetwork: jest
+      .fn<() => Promise<{ id: string; name: string }>>()
+      .mockResolvedValue({
+        id: "test-network-id",
+        name: "test-network",
+      }),
+    getNetwork: jest.fn<any>().mockReturnValue({
+      connect: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      disconnect: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      remove: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      inspect: jest.fn<() => Promise<any>>().mockResolvedValue({
         Id: "test-network-id",
         Name: "test-network",
         Driver: "bridge",
@@ -50,41 +52,43 @@ export function createMockDockerode(): MockedDockerode {
         Containers: {},
       }),
     }),
-    listNetworks: jest.fn().mockResolvedValue([]),
-    removeNetwork: jest.fn().mockResolvedValue(undefined),
-    createVolume: jest.fn().mockResolvedValue({
-      Name: "test-volume",
-      Driver: "local",
-    }),
-    getVolume: jest.fn().mockReturnValue({
-      inspect: jest.fn().mockResolvedValue({
+    listNetworks: jest.fn<() => Promise<any[]>>().mockResolvedValue([]),
+    removeNetwork: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    createVolume: jest
+      .fn<() => Promise<{ Name: string; Driver: string }>>()
+      .mockResolvedValue({
         Name: "test-volume",
         Driver: "local",
       }),
-      remove: jest.fn().mockResolvedValue(undefined),
+    getVolume: jest.fn<any>().mockReturnValue({
+      inspect: jest.fn<() => Promise<any>>().mockResolvedValue({
+        Name: "test-volume",
+        Driver: "local",
+      }),
+      remove: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
     }),
-    listVolumes: jest.fn().mockResolvedValue([]),
-    removeVolume: jest.fn().mockResolvedValue(undefined),
-    createContainer: jest.fn().mockResolvedValue({
+    listVolumes: jest.fn<() => Promise<any[]>>().mockResolvedValue([]),
+    removeVolume: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+    createContainer: jest.fn<() => Promise<any>>().mockResolvedValue({
       id: "test-container-id",
-      start: jest.fn().mockResolvedValue(undefined),
-      stop: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined),
-      logs: jest.fn().mockReturnValue(mockStream),
+      start: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      stop: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      remove: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      logs: jest.fn<any>().mockReturnValue(mockStream),
     }),
-    getContainer: jest.fn().mockReturnValue({
-      inspect: jest.fn().mockResolvedValue({
+    getContainer: jest.fn<any>().mockReturnValue({
+      inspect: jest.fn<() => Promise<any>>().mockResolvedValue({
         Id: "test-container-id",
         State: { Running: false },
       }),
-      start: jest.fn().mockResolvedValue(undefined),
-      stop: jest.fn().mockResolvedValue(undefined),
-      restart: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined),
-      logs: jest.fn().mockReturnValue(mockStream),
+      start: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      stop: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      restart: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      remove: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+      logs: jest.fn<any>().mockReturnValue(mockStream),
     }),
-    listContainers: jest.fn().mockResolvedValue([]),
-    info: jest.fn().mockResolvedValue({
+    listContainers: jest.fn<() => Promise<any[]>>().mockResolvedValue([]),
+    info: jest.fn<() => Promise<any>>().mockResolvedValue({
       ServerVersion: "29.1.5",
       OperatingSystem: "Alpine Linux",
     }),
