@@ -13,6 +13,8 @@ OpenCode Tools is a production-ready system for managing AI agent tasks with:
 - **MCP Integration**: Model Context Protocol server for agent communication
 - **CLI Tools**: 13 command-line utilities for task management
 
+### DeepWiki [Opencode-Tools](https://deepwiki.com/calebrosario/opencode-tools)
+
 ## Current Status
 
 **Version**: 0.1.0 (Alpha)

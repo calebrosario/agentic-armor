@@ -10,10 +10,15 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:pg": "DOTENV_CONFIG_PATH=.env.test jest",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
-    "check-docker": "node -e \"const Docker = require('dockerode'); const docker = new Docker(); docker.info().then(() => console.log('✅ Connected to Docker Engine API')).catch(err => { console.error('❌ Docker connection failed:', err.message); process.exit(1); })\""
+    "check-docker": "node -e \"const Docker = require('dockerode'); const docker = new Docker(); docker.info().then(() => console.log('✅ Connected to Docker Engine API')).catch(err => { console.error('❌ Docker connection failed:', err.message); process.exit(1); })\"",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [
     "docker",
@@ -30,19 +35,20 @@
   },
   "dependencies": {
     "@types/commander": "^2.12.0",
-    "better-sqlite3": "^9.4.3",
     "commander": "^14.0.2",
     "dockerode": "^4.0.2",
     "dotenv": "^16.3.1",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
     "emittery": "^1.0.1",
     "eventemitter3": "^5.0.1",
     "luxon": "^3.4.4",
+    "pg": "^8.18.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.9",
     "@types/dockerode": "^4.0.1",
     "@types/jest": "^29.5.11",
     "@types/luxon": "^3.7.1",
@@ -61,6 +67,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
+    "setupFiles": [
+      "dotenv/config"
+    ],
     "collectCoverageFrom": [
       "src/**/*.ts",
       "!src/**/*.d.ts",

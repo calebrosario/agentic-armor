@@ -29,13 +29,15 @@ OpenCode Tools is a production-ready system for managing AI agent tasks with:
 ### Completed Features
 
 ✅ Phase 0: Deep Dive Research (100%)
+
 - Docker Engine API integration
 - Concurrency models with optimistic locking
 - Multi-layer persistence architecture
 - JSONL logging benchmarks
 
 ✅ Phase 1: Core Infrastructure (100%)
-- TaskRegistry with SQLite backend
+
+- TaskRegistry with PostgreSQL backend (Drizzle ORM)
 - LockManager with optimistic locking
 - MultiLayerPersistence with 4 layers
 - NetworkManager and VolumeManager
@@ -43,6 +45,7 @@ OpenCode Tools is a production-ready system for managing AI agent tasks with:
 - Crash recovery system
 
 ✅ Phase 2: MVP Core (100%)
+
 - TaskLifecycle with state transitions
 - MCP Server with 8 tools
 - Hook system (6 hook types)
@@ -76,6 +79,7 @@ npm run cli -- task-history --task task-123
 ### 1. Task Lifecycle
 
 Complete state machine with transitions:
+
 - pending → running (agent attaches)
 - running → completed (task finishes)
 - running → failed (error occurs)
@@ -85,12 +89,14 @@ Complete state machine with transitions:
 ### 2. Concurrency Control
 
 Optimistic locking with two modes:
+
 - Exclusive: Single agent only
 - Collaborative: Multiple agents with conflict resolution
 
 ### 3. Multi-Layer Persistence
 
 4 storage layers:
+
 - Layer 1: state.json (current state, fast access)
 - Layer 2: logs.jsonl (audit trail, append-only)
 - Layer 3: decisions.md (agent decisions, human-readable)
@@ -99,6 +105,7 @@ Optimistic locking with two modes:
 ### 4. Hook System
 
 6 hook types for extensibility:
+
 - beforeTaskStart / afterTaskStart
 - beforeTaskComplete / afterTaskComplete
 - beforeTaskFail / afterTaskFail
@@ -106,6 +113,7 @@ Optimistic locking with two modes:
 ### 5. MCP Tools
 
 8 tools for task management:
+
 - create_task_sandbox, attach_agent_to_task
 - detach_agent_from_task, execute_in_task
 - list_tasks, get_task_status, cancel_task, delete_task
@@ -113,6 +121,7 @@ Optimistic locking with two modes:
 ### 6. CLI Commands
 
 13 commands organized by category:
+
 - 6 task management commands
 - 2 checkpoint commands
 - 5 memory commands
@@ -151,20 +160,79 @@ For detailed documentation, see:
 
 ## Performance
 
-**SQLite (100K Tasks)**:
+**PostgreSQL (100K Tasks)**:
+
+- Batch Insert: ~180,000 ops/sec
+- Single Row Read: ~250,000 ops/sec
+- Database Size: ~25MB
+
+**SQLite (100K Tasks - Legacy)**:
+
 - Batch Insert: 212,319 ops/sec
 - Single Row Read: 302,724 ops/sec
 - Database Size: 23.36MB
 
 **JSONL (1M Entries)**:
+
 - Simple Append: 10,785 ops/sec
 - Batch Append: 377,060 ops/sec (35x faster)
 - File Size: 183MB
 
 **Lock Manager**:
+
 - Lock Acquisition: <1ms
 - Lock Throughput: 742K ops/sec
 - Conflict Detection: <5ms
+
+### PostgreSQL Database Setup
+
+OpenCode Tools uses PostgreSQL with Drizzle ORM for production-ready persistence.
+
+#### Start Test Database
+
+```bash
+# Start PostgreSQL test container
+docker compose -f docker-compose.test.yml up -d
+
+# Verify database is running
+docker ps | grep postgres
+```
+
+#### Environment Configuration
+
+Create a `.env` file or use the `.env.test` template:
+
+```env
+# Database URL for PostgreSQL
+DATABASE_URL=postgresql://localhost:5432/opencode
+
+# For testing
+DATABASE_URL=postgresql://localhost:5432/opencode_test
+```
+
+#### Connection Pool Configuration
+
+The database uses connection pooling for optimal performance:
+
+- Max connections: 20
+- Idle timeout: 30 seconds
+- Connection timeout: 2 seconds
+
+#### Database Migrations
+
+```bash
+# Generate migration from schema
+npm run db:generate
+
+# Run migrations
+npm run db:migrate
+
+# Push schema changes (development only)
+npm run db:push
+
+# Open Drizzle Studio for visual database management
+npm run db:studio
+```
 
 ## Contributing
 
@@ -181,7 +249,7 @@ For detailed documentation, see:
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests (SQLite - legacy)
 npm test
 
 # Watch mode
@@ -189,9 +257,15 @@ npm run test:watch
 
 # Coverage report
 npm run test:coverage
+
+# Run tests with PostgreSQL (current)
+npm run test:pg
+
+# Note: Ensure PostgreSQL is running before running test:pg
+docker compose -f docker-compose.test.yml up -d
 ```
 
 ---
 
 **Version**: 0.1.0-alpha
-**Last Updated**: 2026-01-31
+**Last Updated**: 2026-02-05

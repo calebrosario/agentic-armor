@@ -117,6 +117,9 @@ dist
 data/
 volumes/
 
+# Git worktrees
+.worktrees/
+
 # Temporary files
 tmp/
 temp/

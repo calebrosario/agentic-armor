@@ -1,0 +1,178 @@
+// Volume Manager Tests
+// Week 11, Task 11.7: Volume Manager Test Suite
+
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { dockerHelper } from "../../src/util/docker-helper";
+import {
+  VolumeManager,
+  getVolumeManager,
+} from "../../src/docker/volume-manager";
+import { OpenCodeError } from "../../src/types";
+import Docker from "dockerode";
+import { createMockDockerode, MockedDockerode } from "../__mocks__/dockerode";
+
+// Mock Dockerode constructor
+jest.mock("dockerode");
+
+describe("VolumeManager", () => {
+  let mockDocker: MockedDockerode;
+  let volumeManager: VolumeManager;
+  const testTaskId = "test-task-123";
+
+  beforeEach(() => {
+    mockDocker = createMockDockerode();
+    volumeManager = getVolumeManager(mockDocker as any);
+  });
+
+  afterEach(() => {
+    // Reset mocks
+    jest.clearAllMocks();
+  });
+
+  describe("mountWorkspace", () => {
+    it("should create and mount named workspace volume", async () => {
+      const mount = await volumeManager.mountWorkspace(testTaskId, "", true);
+
+      expect(mount).toBeDefined();
+      expect(mount.target).toBe("/workspace");
+      expect(mount.type).toBe("volume");
+      expect(mount.readOnly).toBe(false);
+      expect(mount.source).toContain(testTaskId);
+      expect(mount.source).toContain("workspace");
+    });
+
+    it("should create bind mount for workspace", async () => {
+      const fs = require("fs").promises;
+      const testPath = `/tmp/test-workspace-${Date.now()}`;
+
+      const mount = await volumeManager.mountWorkspace(
+        testTaskId,
+        testPath,
+        false,
+      );
+
+      expect(mount).toBeDefined();
+      expect(mount.target).toBe("/workspace");
+      expect(mount.type).toBe("bind");
+      expect(mount.readOnly).toBe(false);
+      expect(mount.source).toBe(testPath);
+
+      // Cleanup
+      await fs.rmdir(testPath, { recursive: true }).catch(() => {});
+    });
+
+    it("should handle workspace path creation", async () => {
+      const fs = require("fs").promises;
+      const testPath = `/tmp/test-workspace-new-${Date.now()}`;
+
+      // Ensure directory doesn't exist
+      await fs.rmdir(testPath, { recursive: true }).catch(() => {});
+
+      const mount = await volumeManager.mountWorkspace(
+        testTaskId,
+        testPath,
+        false,
+      );
+
+      expect(mount).toBeDefined();
+      expect(mount.source).toBe(testPath);
+
+      // Cleanup
+      await fs.rmdir(testPath, { recursive: true }).catch(() => {});
+    });
+  });
+
+  describe("mountTaskMemory", () => {
+    it("should create and mount task memory volume", async () => {
+      const mount = await volumeManager.mountTaskMemory(testTaskId);
+
+      expect(mount).toBeDefined();
+      expect(mount.target).toBe("/memory");
+      expect(mount.type).toBe("volume");
+      expect(mount.readOnly).toBe(false);
+      expect(mount.source).toContain("memory");
+    });
+
+    it("should handle existing task memory volume", async () => {
+      const mount1 = await volumeManager.mountTaskMemory(testTaskId);
+      const mount2 = await volumeManager.mountTaskMemory(testTaskId);
+
+      expect(mount1.source).toBe(mount2.source);
+    });
+  });
+
+  describe("unmountVolumes", () => {
+    it("should unmount all task volumes", async () => {
+      // First mount some volumes
+      await volumeManager.mountWorkspace(testTaskId, "", true);
+      await volumeManager.mountTaskMemory(testTaskId);
+
+      const volumes = await volumeManager.listVolumes({
+        label: `taskId=${testTaskId}`,
+      });
+
+      expect(volumes.length).toBeGreaterThanOrEqual(2);
+
+      await volumeManager.unmountVolumes(testTaskId);
+
+      // Verify volumes are removed
+      const remaining = await volumeManager.listVolumes({
+        label: `taskId=${testTaskId}`,
+      });
+
+      expect(remaining.length).toBe(0);
+    });
+
+    it("should handle unmounting when no volumes exist", async () => {
+      const result = await volumeManager.unmountVolumes("nonexistent-task");
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe("Error Handling", () => {
+    it("should handle volume creation errors", async () => {
+      // Mock createVolume to throw error
+      mockDocker.createVolume.mockRejectedValue(
+        new Error("Volume creation failed"),
+      );
+
+      await expect(
+        volumeManager.mountWorkspace(testTaskId, "", true),
+      ).rejects.toThrow();
+    });
+
+    it("should handle volume list errors", async () => {
+      // Mock listVolumes to throw error
+      mockDocker.listVolumes.mockRejectedValue(new Error("Volume list failed"));
+
+      await expect(
+        volumeManager.listVolumes({
+          label: `taskId=${testTaskId}`,
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("cleanup", () => {
+    it("should cleanup old volumes", async () => {
+      // Create volumes for task-1
+      await volumeManager.mountWorkspace("test-task-1", "", true);
+      await volumeManager.mountTaskMemory("test-task-1");
+
+      // Create volumes for task-2
+      await volumeManager.mountWorkspace("test-task-2", "", true);
+      await volumeManager.mountTaskMemory("test-task-2");
+
+      // Cleanup task-1 volumes
+      await volumeManager.unmountVolumes("test-task-1");
+
+      // Verify task-2 volumes still exist
+      const volumes = await volumeManager.listVolumes({
+        label: `taskId=test-task-2`,
+      });
+
+      expect(volumes.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+});

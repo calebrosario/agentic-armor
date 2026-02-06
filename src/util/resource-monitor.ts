@@ -1,16 +1,20 @@
-import { logger } from './logger';
-import { CONTAINER_MEMORY_MB, CONTAINER_CPU_SHARES, CONTAINER_PIDS_LIMIT } from '../config';
-import { OpenCodeError } from '../types';
+import { logger } from "./logger";
+import {
+  CONTAINER_MEMORY_MB,
+  CONTAINER_CPU_SHARES,
+  CONTAINER_PIDS_LIMIT,
+} from "../config";
+import { OpenCodeError } from "../types";
 
 export interface ResourceUsage {
   memory: {
-    used: number;     // MB
-    limit: number;    // MB
+    used: number; // MB
+    limit: number; // MB
     percentage: number;
   };
   cpu: {
-    used: number;     // percentage (0-100)
-    limit: number;    // shares
+    used: number; // percentage (0-100)
+    limit: number; // shares
   };
   pids: {
     used: number;
@@ -18,8 +22,8 @@ export interface ResourceUsage {
     percentage: number;
   };
   disk: {
-    used: number;     // MB
-    limit: number;    // MB
+    used: number; // MB
+    limit: number; // MB
     percentage: number;
   };
 }
@@ -50,7 +54,7 @@ export class ResourceMonitor {
    * Initialize resource monitoring
    */
   public async initialize(): Promise<void> {
-    logger.info('Initializing Resource Monitor', {
+    logger.info("Initializing Resource Monitor", {
       memoryLimit: CONTAINER_MEMORY_MB,
       cpuShares: CONTAINER_CPU_SHARES,
       pidsLimit: CONTAINER_PIDS_LIMIT,
@@ -59,7 +63,7 @@ export class ResourceMonitor {
     // Start periodic monitoring
     this.startMonitoring();
 
-    logger.info('✅ Resource Monitor initialized');
+    logger.info("✅ Resource Monitor initialized");
   }
 
   /**
@@ -67,21 +71,35 @@ export class ResourceMonitor {
    * @param requested - Requested resource limits
    * @returns true if within limits
    */
-  public async checkResourceLimits(requested: Partial<ResourceLimits>): Promise<boolean> {
+  public async checkResourceLimits(
+    requested: Partial<ResourceLimits>,
+  ): Promise<boolean> {
     const currentUsage = await this.getSystemResourceUsage();
     const totalContainers = this.resourceUsage.size;
 
     // Calculate projected usage if this container is added
-    const projectedMemory = currentUsage.memory.used + (requested.memoryMB || CONTAINER_MEMORY_MB);
-    const projectedPids = currentUsage.pids.used + (requested.pidsLimit || CONTAINER_PIDS_LIMIT);
+    // Use reserved resources (sum of container limits) instead of current usage
+    let totalReservedMemory = 0;
+    for (const usage of this.resourceUsage.values()) {
+      totalReservedMemory += usage.memory.limit;
+    }
+    const projectedMemory =
+      totalReservedMemory + (requested.memoryMB || CONTAINER_MEMORY_MB);
+
+    let totalReservedPids = 0;
+    for (const usage of this.resourceUsage.values()) {
+      totalReservedPids += usage.pids.limit;
+    }
+    const projectedPids =
+      totalReservedPids + (requested.pidsLimit || CONTAINER_PIDS_LIMIT);
 
     // Check memory limits (leave 20% buffer)
-    const memoryLimit = currentUsage.memory.limit * 0.8;
-    if (projectedMemory > memoryLimit) {
-      logger.warn('Resource limit exceeded: memory', {
+    const buffer = currentUsage.memory.limit * 0.8;
+    if (projectedMemory > buffer) {
+      logger.warn("Resource limit exceeded: memory", {
         requested: requested.memoryMB,
         projected: projectedMemory,
-        limit: memoryLimit,
+        buffer: buffer,
         current: currentUsage.memory.used,
       });
       return false;
@@ -90,9 +108,10 @@ export class ResourceMonitor {
     // Check PID limits (leave 10% buffer)
     const pidLimit = currentUsage.pids.limit * 0.9;
     if (projectedPids > pidLimit) {
-      logger.warn('Resource limit exceeded: PIDs', {
+      logger.warn("Resource limit exceeded: PIDs", {
         requested: requested.pidsLimit,
         projected: projectedPids,
+        buffer: pidLimit - totalReservedPids,
         limit: pidLimit,
         current: currentUsage.pids.used,
       });
@@ -131,7 +150,7 @@ export class ResourceMonitor {
     };
 
     this.resourceUsage.set(containerId, initialUsage);
-    logger.info('Container registered for resource monitoring', {
+    logger.info("Container registered for resource monitoring", {
       containerId,
       limits,
       totalContainers: this.resourceUsage.size,
@@ -145,7 +164,7 @@ export class ResourceMonitor {
   public unregisterContainer(containerId: string): void {
     const removed = this.resourceUsage.delete(containerId);
     if (removed) {
-      logger.info('Container unregistered from resource monitoring', {
+      logger.info("Container unregistered from resource monitoring", {
         containerId,
         totalContainers: this.resourceUsage.size,
       });
@@ -157,17 +176,31 @@ export class ResourceMonitor {
    * @param containerId - Container ID
    * @param usage - Current usage
    */
-  public updateContainerUsage(containerId: string, usage: Partial<ResourceUsage>): void {
+  public updateContainerUsage(
+    containerId: string,
+    usage: Partial<ResourceUsage>,
+  ): void {
     const currentUsage = this.resourceUsage.get(containerId);
     if (!currentUsage) {
-      logger.warn('Attempted to update usage for unregistered container', { containerId });
+      logger.warn("Attempted to update usage for unregistered container", {
+        containerId,
+      });
       return;
     }
 
     // Update usage data
     if (usage.memory) {
       currentUsage.memory.used = usage.memory.used;
-      currentUsage.memory.percentage = (usage.memory.used / currentUsage.memory.limit) * 100;
+      if (currentUsage.memory.limit > 0) {
+        currentUsage.memory.percentage =
+          (usage.memory.used / currentUsage.memory.limit) * 100;
+      } else {
+        currentUsage.memory.percentage = 0;
+        logger.warn("Container has zero memory limit", {
+          containerId,
+          used: usage.memory.used,
+        });
+      }
     }
 
     if (usage.cpu) {
@@ -176,12 +209,30 @@ export class ResourceMonitor {
 
     if (usage.pids) {
       currentUsage.pids.used = usage.pids.used;
-      currentUsage.pids.percentage = (usage.pids.used / currentUsage.pids.limit) * 100;
+      if (currentUsage.pids.limit > 0) {
+        currentUsage.pids.percentage =
+          (usage.pids.used / currentUsage.pids.limit) * 100;
+      } else {
+        currentUsage.pids.percentage = 0;
+        logger.warn("Container has zero PID limit", {
+          containerId,
+          used: usage.pids.used,
+        });
+      }
     }
 
     if (usage.disk) {
       currentUsage.disk.used = usage.disk.used;
-      currentUsage.disk.percentage = (usage.disk.used / currentUsage.disk.limit) * 100;
+      if (currentUsage.disk.limit > 0) {
+        currentUsage.disk.percentage =
+          (usage.disk.used / currentUsage.disk.limit) * 100;
+      } else {
+        currentUsage.disk.percentage = 0;
+        logger.warn("Container has zero disk limit", {
+          containerId,
+          used: usage.disk.used,
+        });
+      }
     }
 
     // Check for alerts
@@ -220,13 +271,16 @@ export class ResourceMonitor {
 
     // Get system limits (in a real implementation, query system)
     const systemMemoryLimit = 8192; // 8GB default
-    const systemPidsLimit = 1024;   // Default PID limit
+    const systemPidsLimit = 1024; // Default PID limit
 
     return {
       memory: {
         used: totalMemoryUsed,
         limit: systemMemoryLimit, // Always use system limit
-        percentage: systemMemoryLimit > 0 ? (totalMemoryUsed / systemMemoryLimit) * 100 : 0,
+        percentage:
+          systemMemoryLimit > 0
+            ? (totalMemoryUsed / systemMemoryLimit) * 100
+            : 0,
       },
       cpu: {
         used: avgCpuUsed,
@@ -235,7 +289,8 @@ export class ResourceMonitor {
       pids: {
         used: totalPidsUsed,
         limit: systemPidsLimit, // Always use system limit
-        percentage: systemPidsLimit > 0 ? (totalPidsUsed / systemPidsLimit) * 100 : 0,
+        percentage:
+          systemPidsLimit > 0 ? (totalPidsUsed / systemPidsLimit) * 100 : 0,
       },
       disk: {
         used: 0, // Not implemented yet
@@ -265,7 +320,7 @@ export class ResourceMonitor {
     const cleaned = this.resourceUsage.size;
     this.resourceUsage.clear();
     this.alertsTriggered.clear();
-    logger.warn('Emergency resource monitoring cleanup performed', { cleaned });
+    logger.warn("Emergency resource monitoring cleanup performed", { cleaned });
     return cleaned;
   }
 
@@ -277,7 +332,7 @@ export class ResourceMonitor {
   private checkAlerts(containerId: string, usage: ResourceUsage): void {
     const alertKey = `${containerId}-memory`;
     if (usage.memory.percentage > 85 && !this.alertsTriggered.has(alertKey)) {
-      logger.error('CRITICAL: Container memory usage >90%', {
+      logger.error("CRITICAL: Container memory usage >90%", {
         containerId,
         memoryUsed: usage.memory.used,
         memoryLimit: usage.memory.limit,
@@ -290,7 +345,7 @@ export class ResourceMonitor {
 
     const pidAlertKey = `${containerId}-pids`;
     if (usage.pids.percentage >= 80 && !this.alertsTriggered.has(pidAlertKey)) {
-      logger.error('CRITICAL: Container PID usage >80%', {
+      logger.error("CRITICAL: Container PID usage >80%", {
         containerId,
         pidsUsed: usage.pids.used,
         pidsLimit: usage.pids.limit,
@@ -312,8 +367,11 @@ export class ResourceMonitor {
         const systemUsage = await this.getSystemResourceUsage();
 
         // Log system-wide resource usage
-        if (systemUsage.memory.percentage > 80 || systemUsage.pids.percentage > 70) {
-          logger.warn('High system resource usage detected', {
+        if (
+          systemUsage.memory.percentage > 80 ||
+          systemUsage.pids.percentage > 70
+        ) {
+          logger.warn("High system resource usage detected", {
             memoryPercentage: systemUsage.memory.percentage,
             pidsPercentage: systemUsage.pids.percentage,
             containers: this.resourceUsage.size,
@@ -322,9 +380,8 @@ export class ResourceMonitor {
 
         // Clean up any containers that may have been removed externally
         // (This would be enhanced with Docker API integration)
-
       } catch (error: unknown) {
-        logger.error('Error during resource monitoring', {
+        logger.error("Error during resource monitoring", {
           error: error instanceof Error ? error.message : String(error),
         });
       }

@@ -1,7 +1,7 @@
 // Core TypeScript interfaces and types for OpenCode Tools
 
 // Re-export lifecycle types
-export type { TaskConfig, TaskResult } from './lifecycle';
+export type { TaskConfig, TaskResult } from "./lifecycle";
 
 // Task-related types
 export interface Task {
@@ -16,11 +16,18 @@ export interface Task {
 }
 
 export type TaskStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface TaskFilters {
+  status?: TaskStatus;
+  owner?: string;
+  limit?: number;
+  offset?: number;
+}
 
 // Container-related types
 export interface ContainerInfo {
@@ -35,19 +42,19 @@ export interface ContainerInfo {
 }
 
 export type ContainerStatus =
-  | 'created'
-  | 'running'
-  | 'paused'
-  | 'stopped'
-  | 'exited'
-  | 'dead'
-  | 'restarting'
-  | 'removing';
+  | "created"
+  | "running"
+  | "paused"
+  | "stopped"
+  | "exited"
+  | "dead"
+  | "restarting"
+  | "removing";
 
 export interface ContainerPort {
   containerPort: number;
   hostPort?: number;
-  protocol: 'tcp' | 'udp';
+  protocol: "tcp" | "udp";
 }
 
 export interface ResourceLimits {
@@ -62,7 +69,7 @@ export interface NetworkInfo {
   id: string;
   name: string;
   driver: string;
-  scope: 'local' | 'global';
+  scope: "local" | "global";
   createdAt: Date;
 }
 
@@ -76,7 +83,7 @@ export interface MCPTool {
 
 export interface MCPParameter {
   name: string;
-  type: 'string' | 'number' | 'boolean' | 'object';
+  type: "string" | "number" | "boolean" | "object";
   description: string;
   required: boolean;
 }
@@ -121,7 +128,7 @@ export interface LockInfo {
   version: number; // for optimistic locking
 }
 
-export type LockMode = 'exclusive' | 'collaborative';
+export type LockMode = "exclusive" | "collaborative";
 
 // State persistence types (Phase 1)
 export interface StateSnapshot {
@@ -141,7 +148,7 @@ export class OpenCodeError extends Error {
     super(message);
     this.code = code;
     this.details = details;
-    this.name = 'OpenCodeError';
+    this.name = "OpenCodeError";
   }
 }
 
