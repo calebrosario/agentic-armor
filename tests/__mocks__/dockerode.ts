@@ -7,53 +7,20 @@ import { jest } from "@jest/globals";
 jest.mock("dockerode");
 
 // Type-safe mock interface for tests
-// Using jest.Mock types instead of 'any' for better type safety
-// Note: This provides partial type safety matching the mock implementation
-// Full API fidelity would require importing Dockerode types, which may cause circular dependencies
+// jest.fn() returns 'never' type in strict TypeScript - documented Jest limitation
 export interface MockedDockerode {
-  createNetwork: jest.Mock<() => Promise<{ id: string; name: string }>>;
-  getNetwork: jest.Mock<
-    (id: string) => {
-      connect: jest.Mock<() => Promise<void>>;
-      disconnect: jest.Mock<() => Promise<void>>;
-      remove: jest.Mock<() => Promise<void>>;
-      inspect: jest.Mock<() => Promise<any>>;
-    }
-  >;
-  listNetworks: jest.Mock<() => Promise<any[]>>;
-  removeNetwork: jest.Mock<() => Promise<void>>;
-  createVolume: jest.Mock<() => Promise<{ Name: string; Driver: string }>>;
-  getVolume: jest.Mock<
-    (id: string) => {
-      inspect: jest.Mock<() => Promise<any>>;
-      remove: jest.Mock<() => Promise<void>>;
-    }
-  >;
-  listVolumes: jest.Mock<() => Promise<{ Volumes: any[]; Warnings: string[] }>>;
-  removeVolume: jest.Mock<() => Promise<void>>;
-  createContainer: jest.Mock<
-    () => Promise<{
-      id: string;
-      start: jest.Mock<() => Promise<void>>;
-      stop: jest.Mock<() => Promise<void>>;
-      remove: jest.Mock<() => Promise<void>>;
-      logs: jest.Mock<() => any>;
-    }>
-  >;
-  getContainer: jest.Mock<
-    (id: string) => {
-      inspect: jest.Mock<() => Promise<any>>;
-      start: jest.Mock<() => Promise<void>>;
-      stop: jest.Mock<() => Promise<void>>;
-      restart: jest.Mock<() => Promise<void>>;
-      remove: jest.Mock<() => Promise<void>>;
-      logs: jest.Mock<() => any>;
-    }
-  >;
-  listContainers: jest.Mock<() => Promise<any[]>>;
-  info: jest.Mock<
-    () => Promise<{ ServerVersion: string; OperatingSystem: string }>
-  >;
+  createNetwork: any;
+  getNetwork: any;
+  listNetworks: any;
+  removeNetwork: any;
+  createVolume: any;
+  getVolume: any;
+  listVolumes: any;
+  removeVolume: any;
+  createContainer: any;
+  getContainer: any;
+  listContainers: any;
+  info: any;
 }
 
 // Factory function for creating mocked Dockerode instances
