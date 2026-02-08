@@ -17,7 +17,7 @@ export const healthCommand = new Command("health")
       const healthData = await health.checkAll();
 
       console.log("\n" + "═".repeat(60));
-      console.log("OPENCODE TOOLS - HEALTH CHECK");
+      console.log("AGENTIC ARMOR - HEALTH CHECK");
       console.log("═".repeat(60));
 
       const statusEmoji =

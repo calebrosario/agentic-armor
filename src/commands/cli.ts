@@ -24,8 +24,8 @@ import {
 // Main CLI program
 const program = new Command();
 program
-  .name("agent-armor")
-  .description("Agent Armor - Task Management with Docker Sandboxes")
+  .name("agentic-armor")
+  .description("Agentic Armor - Task Management with Docker Sandboxes")
   .version(packageJson.version || "0.1.0");
 
 // Add task management commands

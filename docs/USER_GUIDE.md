@@ -1,6 +1,6 @@
-# OpenCode Tools User Guide
+# Agentic Armor User Guide
 
-Complete guide for using OpenCode Tools for task management and multi-agent orchestration.
+Complete guide for using Agentic Armor for task management and multi-agent orchestration.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ Complete guide for using OpenCode Tools for task management and multi-agent orch
 
 ### Prerequisites
 
-Before using OpenCode Tools, ensure you have:
+Before using Agentic Armor, ensure you have:
 
 1. **Node.js 20+** installed
 2. **Docker** installed and running

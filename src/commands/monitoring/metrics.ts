@@ -25,7 +25,7 @@ export const metricsCommand = new Command("metrics")
       const formatted = await getFormattedDashboard();
 
       console.log("\n" + "═".repeat(60));
-      console.log("OPENCODE TOOLS - METRICS DASHBOARD");
+      console.log("AGENTIC ARMOR - METRICS DASHBOARD");
       console.log("═".repeat(60));
 
       console.log("\n📊 SUMMARY\n");

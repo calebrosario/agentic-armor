@@ -1,6 +1,6 @@
-# OpenCode Tools
+# Agentic Armor
 
-> Docker-based task management system with concurrency, state persistence, and multi-agent orchestration.
+> A Docker-based task management system with concurrency, state persistence and multi-agent orchestration.
 
 ## Quick Links
 
@@ -11,7 +11,7 @@
 
 ## Overview
 
-OpenCode Tools is a production-ready system for managing AI agent tasks with:
+Agentic Armor is a production-ready system for managing AI agent tasks with:
 
 - **Docker Integration**: Full lifecycle management for Docker containers
 - **Concurrency Control**: Optimistic locking for multi-agent workflows

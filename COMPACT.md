@@ -103,7 +103,7 @@ What Was Done This Session
 - Updated src/index.ts
   - Auto-detects CLI commands vs application startup
   - If args contain subcommands, delegates to CLI
-  - Otherwise starts OpenCode Tools application
+  - Otherwise starts Agentic Armor application
   - Supports both modes in single entry point
     Task 13.15: Package Configuration
 - Updated package.json
