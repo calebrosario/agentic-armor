@@ -174,10 +174,15 @@ describe("DockerHelper", () => {
       expect(instance1).toBe(instance2);
     });
   });
-});
 
-describe("dockerHelper singleton export", () => {
-  it("should export singleton instance", () => {
-    expect(dockerHelper).toBeInstanceOf(DockerHelper);
+  describe("dockerHelper singleton export", () => {
+    it("should export singleton instance", () => {
+      expect(dockerHelper).toBeInstanceOf(DockerHelper);
+    });
   });
-});
+
+  describe("dockerHelper singleton export", () => {
+    it("should export singleton instance", () => {
+      expect(dockerHelper).toBeInstanceOf(DockerHelper);
+    });
+  });
