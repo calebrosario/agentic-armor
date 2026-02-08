@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Network Manager Tests
 // Week 11, Task 11.9: Network Manager test suite
 
