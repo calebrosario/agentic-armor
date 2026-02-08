@@ -61,7 +61,7 @@ describe("MCP Server Integration", () => {
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(result.taskId).toBe("test-task-1");
+      expect((result as any).taskId).toBe("test-task-1");
     });
 
     test("should execute attach_agent_to_task tool", async () => {
@@ -76,7 +76,7 @@ describe("MCP Server Integration", () => {
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(result.attached).toBe(true);
+      expect((result as any).attached).toBe(true);
     });
 
     test("should execute execute_in_task tool", async () => {
@@ -92,8 +92,8 @@ describe("MCP Server Integration", () => {
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain("hello world");
+      expect((result as any).exitCode).toBe(0);
+      expect((result as any).stdout).toContain("hello world");
     });
 
     test("should handle errors in tool execution", async () => {

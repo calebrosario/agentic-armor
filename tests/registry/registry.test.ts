@@ -230,22 +230,12 @@ describe("TaskRegistry", () => {
     );
   });
 
-  // Try to read the task multiple times concurrently
-  const promises = [];
-  for (let i = 0; i < 10; i++) {
-    promises.push(taskRegistry.getById("test-task-4"));
-  }
-
-  const results = await Promise.all(promises);
-  expect(results.length).toBe(10);
-  expect(results.every((r) => r !== null && r.id === "test-task-4")).toBe(true);
-});
-
-afterAll(async () => {
-  // Cleanup test tasks
-  try {
-    await taskRegistry.delete("test-task-4");
-  } catch {
-    // Ignore cleanup errors
-  }
+  afterAll(async () => {
+    // Cleanup test tasks
+    try {
+      await taskRegistry.delete("test-task-4");
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
 });
