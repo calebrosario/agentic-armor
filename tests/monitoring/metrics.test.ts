@@ -36,10 +36,9 @@ describe("MetricsCollector", () => {
   describe("Export", () => {
     it("should export as JSON", () => {
       const json = metrics.exportJSON();
-      expect(typeof json).toBe("string");
-      const parsed = JSON.parse(json as string);
-      expect(parsed).toHaveProperty("counters");
-      expect(parsed).toHaveProperty("gauges");
+      expect(typeof json).toBe("object");
+      expect(json).toHaveProperty("counters");
+      expect(json).toHaveProperty("gauges");
     });
   });
 
