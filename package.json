@@ -1,5 +1,5 @@
 {
-  "name": "opencode-tools",
+  "name": "agentic-armor",
   "version": "0.1.0",
   "description": "Docker-based task management system with concurrency, state persistence, and multi-agent orchestration",
   "main": "dist/index.js",
@@ -28,7 +28,7 @@
     "mcp",
     "opencode"
   ],
-  "author": "OpenCode Tools Team",
+  "author": "Agentic Armor Team",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
