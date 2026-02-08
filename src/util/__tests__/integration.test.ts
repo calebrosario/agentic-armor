@@ -70,6 +70,9 @@ describe("Phase 1 Integration Tests", () => {
 
     it("should return Promise from execute", async () => {
       const tool = TOOL_DEFINITIONS[0];
+      if (!tool) {
+        throw new Error("No tool definitions found");
+      }
       const result = tool.execute({});
       expect(result).toBeInstanceOf(Promise);
     });
