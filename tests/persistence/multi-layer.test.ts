@@ -1,7 +1,14 @@
 // Multi-Layer Persistence Tests - Phase 2: MVP Core
 // Week 9, Day 5: Persistence Tests
 
-import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
+import {
+  describe,
+  test,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "@jest/globals";
 import { multiLayerPersistence } from "../../src/persistence/multi-layer";
 import { LogEntry, AgentDecision } from "../../src/persistence/multi-layer";
 
@@ -9,17 +16,19 @@ describe("MultiLayerPersistence", () => {
   const testTaskId = "test-task-persistence";
 
   beforeAll(async () => {
-    // Clean up any existing test data
     try {
       await multiLayerPersistence.cleanup(testTaskId);
-    } catch (error) {
-      // Ignore if task doesn't exist
-    }
+    } catch (error) {}
   });
 
   afterAll(async () => {
-    // Cleanup test data
     await multiLayerPersistence.cleanup(testTaskId);
+  });
+
+  beforeEach(async () => {
+    try {
+      await multiLayerPersistence.cleanup(testTaskId);
+    } catch (error) {}
   });
 
   describe("Layer 1: state.json", () => {
@@ -117,7 +126,26 @@ describe("MultiLayerPersistence", () => {
       };
 
       await multiLayerPersistence.appendDecision(testTaskId, decision);
+
+      const fs = require("fs");
+      const path = require("path");
+      const decisionsPath = path.join(
+        process.cwd(),
+        "data",
+        "tasks",
+        testTaskId,
+        "decisions.md",
+      );
+      console.log("[TEST] File exists:", fs.existsSync(decisionsPath));
+      if (fs.existsSync(decisionsPath)) {
+        console.log(
+          "[TEST] File content:",
+          fs.readFileSync(decisionsPath, "utf-8"),
+        );
+      }
+
       const decisions = await multiLayerPersistence.loadDecisions(testTaskId);
+      console.log("[TEST] Loaded decisions count:", decisions.length);
 
       expect(decisions.length).toBe(1);
       expect(decisions[0]?.decision).toBe(decision.decision);

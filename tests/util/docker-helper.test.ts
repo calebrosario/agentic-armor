@@ -46,13 +46,20 @@ describe("DockerHelper", () => {
       expect(process.env.DOCKER_SOCKET).toBe("/custom/docker.sock");
     });
 
-    it("should detect standard Linux socket path", () => {
-      // Mock platform to linux
+    it("should detect standard macOS socket path", () => {
+      // Mock platform to darwin and mock fs.existsSync
       Object.defineProperty(process, "platform", {
-        value: "linux",
+        value: "darwin",
         writable: true,
         configurable: true,
       });
+
+      const helper = DockerHelper.getInstance();
+      const socket = helper.detectSocket();
+
+      expect(socket).toContain("/Users/.docker/run/docker.sock");
+      expect(process.env.DOCKER_SOCKET).toBe("/Users/.docker/run/docker.sock");
+    });
 
       const helper = DockerHelper.getInstance();
       const socket = helper.detectSocket();

@@ -11,10 +11,12 @@ import {
 } from "@jest/globals";
 import { taskRegistry } from "../../src/task-registry/registry";
 import { Task, TaskStatus } from "../../src/types";
+import { DatabaseManager } from "../../src/persistence/database";
 
 describe("TaskRegistry", () => {
   beforeAll(async () => {
-    // TaskRegistry auto-initializes on first getInstance() call
+    // Initialize DatabaseManager first, then TaskRegistry
+    await DatabaseManager.getInstance().initialize();
     await taskRegistry.initialize();
   });
 
@@ -27,11 +29,11 @@ describe("TaskRegistry", () => {
   });
 
   afterAll(async () => {
-    // Cleanup - clear all test tasks
     const tasks = await taskRegistry.list();
     for (const task of tasks) {
       await taskRegistry.delete(task.id);
     }
+    await DatabaseManager.getInstance().close();
   });
 
   test("should create a valid task", async () => {
