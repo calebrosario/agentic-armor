@@ -55,12 +55,6 @@ export class DatabaseManager {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      // Only exit in non-test environments
-      if (process.env.NODE_ENV !== "test") {
-        logger.error("Database initialization failed - shutting down");
-        process.exit(1);
-      }
-
       throw error;
     }
   }

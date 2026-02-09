@@ -1,11 +1,11 @@
-import Dockerode from 'dockerode';
-import { logger } from './logger';
-import { DOCKER_SOCKET, DOCKER_NETWORK_PREFIX } from '../config';
-import { OpenCodeError } from '../types';
+import Dockerode from "dockerode";
+import { logger } from "./logger";
+import { DOCKER_SOCKET, DOCKER_NETWORK_PREFIX } from "../config";
+import { OpenCodeError } from "../types";
 
 export interface NetworkConfig {
   name: string;
-  driver: 'bridge' | 'overlay' | 'macvlan';
+  driver: "bridge" | "overlay" | "macvlan";
   subnet?: string;
   gateway?: string;
   isolated: boolean; // If true, blocks external access
@@ -24,7 +24,7 @@ export interface ContainerNetwork {
  * Creates isolated bridge networks per task to prevent lateral movement
  */
 export class NetworkIsolator {
-  private docker: Dockerode;
+  private docker: any;
   private static instance: NetworkIsolator;
   private activeNetworks = new Map<string, ContainerNetwork[]>();
 
@@ -48,9 +48,9 @@ export class NetworkIsolator {
     try {
       // Test Docker connection
       await this.docker.info();
-      logger.info('NetworkIsolator initialized successfully');
+      logger.info("NetworkIsolator initialized successfully");
     } catch (error: unknown) {
-      logger.error('Failed to initialize NetworkIsolator', {
+      logger.error("Failed to initialize NetworkIsolator", {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -63,11 +63,14 @@ export class NetworkIsolator {
    * @param config - Network configuration
    * @returns Network ID
    */
-  public async createTaskNetwork(taskId: string, config: Partial<NetworkConfig> = {}): Promise<string> {
+  public async createTaskNetwork(
+    taskId: string,
+    config: Partial<NetworkConfig> = {},
+  ): Promise<string> {
     const networkName = `${DOCKER_NETWORK_PREFIX}${taskId}`;
     const networkConfig: NetworkConfig = {
       name: networkName,
-      driver: 'bridge',
+      driver: "bridge",
       isolated: true,
       ...config,
     };
@@ -79,7 +82,7 @@ export class NetworkIsolator {
       });
 
       if (existingNetworks.length > 0) {
-        logger.warn('Network already exists, reusing', { taskId, networkName });
+        logger.warn("Network already exists, reusing", { taskId, networkName });
         const network = existingNetworks[0];
         return network?.Id || networkName;
       }
@@ -89,19 +92,24 @@ export class NetworkIsolator {
         Name: networkName,
         Driver: networkConfig.driver,
         Options: {
-          'com.docker.network.bridge.enable_icc': 'false', // Disable inter-container communication
-          'com.docker.network.bridge.enable_ip_masquerade': networkConfig.isolated ? 'false' : 'true',
+          "com.docker.network.bridge.enable_icc": "false", // Disable inter-container communication
+          "com.docker.network.bridge.enable_ip_masquerade":
+            networkConfig.isolated ? "false" : "true",
         },
         IPAM: {
-          Config: networkConfig.subnet ? [{
-            Subnet: networkConfig.subnet,
-            Gateway: networkConfig.gateway,
-          }] : [],
+          Config: networkConfig.subnet
+            ? [
+                {
+                  Subnet: networkConfig.subnet,
+                  Gateway: networkConfig.gateway,
+                },
+              ]
+            : [],
         },
       };
 
       const network = await this.docker.createNetwork(networkSpec);
-      logger.info('Isolated network created', {
+      logger.info("Isolated network created", {
         taskId,
         networkId: network.id,
         networkName,
@@ -111,15 +119,15 @@ export class NetworkIsolator {
 
       return network.id;
     } catch (error: unknown) {
-      logger.error('Failed to create task network', {
+      logger.error("Failed to create task network", {
         taskId,
         networkName,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_CREATION_FAILED',
+        "NETWORK_CREATION_FAILED",
         `Failed to create network for task ${taskId}`,
-        { taskId, networkName }
+        { taskId, networkName },
       );
     }
   }
@@ -133,7 +141,7 @@ export class NetworkIsolator {
   public async connectContainer(
     containerId: string,
     networkId: string,
-    aliases: string[] = []
+    aliases: string[] = [],
   ): Promise<void> {
     try {
       const network = this.docker.getNetwork(networkId);
@@ -162,24 +170,27 @@ export class NetworkIsolator {
       if (!this.activeNetworks.has(networkId)) {
         this.activeNetworks.set(networkId, []);
       }
-      this.activeNetworks.get(networkId)!.push(containerNetwork);
+      const networkContainers = this.activeNetworks.get(networkId);
+      if (networkContainers) {
+        networkContainers.push(containerNetwork);
+      }
 
-      logger.info('Container connected to isolated network', {
+      logger.info("Container connected to isolated network", {
         containerId,
         networkId,
         networkName: networkInfo.Name,
         aliases,
       });
     } catch (error: unknown) {
-      logger.error('Failed to connect container to network', {
+      logger.error("Failed to connect container to network", {
         containerId,
         networkId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_CONNECTION_FAILED',
+        "NETWORK_CONNECTION_FAILED",
         `Failed to connect container ${containerId} to network ${networkId}`,
-        { containerId, networkId }
+        { containerId, networkId },
       );
     }
   }
@@ -189,7 +200,10 @@ export class NetworkIsolator {
    * @param containerId - Docker container ID
    * @param networkId - Network ID
    */
-  public async disconnectContainer(containerId: string, networkId: string): Promise<void> {
+  public async disconnectContainer(
+    containerId: string,
+    networkId: string,
+  ): Promise<void> {
     try {
       const network = this.docker.getNetwork(networkId);
 
@@ -201,7 +215,9 @@ export class NetworkIsolator {
       // Remove from tracking
       const networkContainers = this.activeNetworks.get(networkId);
       if (networkContainers) {
-        const index = networkContainers.findIndex(nc => nc.containerId === containerId);
+        const index = networkContainers.findIndex(
+          (nc) => nc.containerId === containerId,
+        );
         if (index >= 0) {
           networkContainers.splice(index, 1);
           if (networkContainers.length === 0) {
@@ -210,20 +226,20 @@ export class NetworkIsolator {
         }
       }
 
-      logger.info('Container disconnected from network', {
+      logger.info("Container disconnected from network", {
         containerId,
         networkId,
       });
     } catch (error: unknown) {
-      logger.error('Failed to disconnect container from network', {
+      logger.error("Failed to disconnect container from network", {
         containerId,
         networkId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_DISCONNECTION_FAILED',
+        "NETWORK_DISCONNECTION_FAILED",
         `Failed to disconnect container ${containerId} from network ${networkId}`,
-        { containerId, networkId }
+        { containerId, networkId },
       );
     }
   }
@@ -240,9 +256,12 @@ export class NetworkIsolator {
       const networkContainers = this.activeNetworks.get(networkId) || [];
       for (const containerNetwork of networkContainers) {
         try {
-          await this.disconnectContainer(containerNetwork.containerId, networkId);
+          await this.disconnectContainer(
+            containerNetwork.containerId,
+            networkId,
+          );
         } catch (error: unknown) {
-          logger.warn('Failed to disconnect container during network removal', {
+          logger.warn("Failed to disconnect container during network removal", {
             containerId: containerNetwork.containerId,
             networkId,
             error: error instanceof Error ? error.message : String(error),
@@ -256,19 +275,19 @@ export class NetworkIsolator {
       // Clean up tracking
       this.activeNetworks.delete(networkId);
 
-      logger.info('Task network removed', {
+      logger.info("Task network removed", {
         networkId,
         disconnectedContainers: networkContainers.length,
       });
     } catch (error: unknown) {
-      logger.error('Failed to remove task network', {
+      logger.error("Failed to remove task network", {
         networkId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_REMOVAL_FAILED',
+        "NETWORK_REMOVAL_FAILED",
         `Failed to remove network ${networkId}`,
-        { networkId }
+        { networkId },
       );
     }
   }
@@ -278,26 +297,29 @@ export class NetworkIsolator {
    * @param networkId - Network ID to isolate
    * @param taskId - Task ID for tracking
    */
-  public async isolateNetwork(networkId: string, taskId: string): Promise<void> {
+  public async isolateNetwork(
+    networkId: string,
+    taskId: string,
+  ): Promise<void> {
     try {
-      logger.info('Isolating network', { networkId, taskId });
+      logger.info("Isolating network", { networkId, taskId });
 
       // In a real implementation, this would set up iptables rules
       // For now, we just verify network exists
       const network = this.docker.getNetwork(networkId);
       await network.inspect();
 
-      logger.info('Network isolated successfully', { networkId, taskId });
+      logger.info("Network isolated successfully", { networkId, taskId });
     } catch (error: unknown) {
-      logger.error('Failed to isolate network', {
+      logger.error("Failed to isolate network", {
         networkId,
         taskId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_ISOLATION_FAILED',
+        "NETWORK_ISOLATION_FAILED",
         `Failed to isolate network ${networkId}`,
-        { networkId, taskId }
+        { networkId, taskId },
       );
     }
   }
@@ -308,23 +330,23 @@ export class NetworkIsolator {
    */
   public async removeNetworkIsolation(networkId: string): Promise<void> {
     try {
-      logger.info('Removing network isolation', { networkId });
+      logger.info("Removing network isolation", { networkId });
 
       // In a real implementation, this would remove iptables rules
       // For now, we just verify network exists
       const network = this.docker.getNetwork(networkId);
       await network.inspect();
 
-      logger.info('Network isolation removed successfully', { networkId });
+      logger.info("Network isolation removed successfully", { networkId });
     } catch (error: unknown) {
-      logger.error('Failed to remove network isolation', {
+      logger.error("Failed to remove network isolation", {
         networkId,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'NETWORK_ISOLATION_REMOVAL_FAILED',
+        "NETWORK_ISOLATION_REMOVAL_FAILED",
         `Failed to remove isolation from network ${networkId}`,
-        { networkId }
+        { networkId },
       );
     }
   }
@@ -349,7 +371,7 @@ export class NetworkIsolator {
       const network = this.docker.getNetwork(networkId);
       return await network.inspect();
     } catch (error: unknown) {
-      logger.error('Failed to get task network info', {
+      logger.error("Failed to get task network info", {
         taskId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -374,15 +396,17 @@ export class NetworkIsolator {
 
       // Check bridge settings
       const options = networkInfo.Options || {};
-      const iccDisabled = options['com.docker.network.bridge.enable_icc'] === 'false';
-      const ipMasqueradeDisabled = options['com.docker.network.bridge.enable_ip_masquerade'] === 'false';
+      const iccDisabled =
+        options["com.docker.network.bridge.enable_icc"] === "false";
+      const ipMasqueradeDisabled =
+        options["com.docker.network.bridge.enable_ip_masquerade"] === "false";
 
       if (!iccDisabled) {
-        issues.push('Inter-container communication not disabled');
+        issues.push("Inter-container communication not disabled");
       }
 
       if (!ipMasqueradeDisabled) {
-        issues.push('IP masquerading not disabled (external access possible)');
+        issues.push("IP masquerading not disabled (external access possible)");
       }
 
       // Check for unexpected containers
@@ -390,12 +414,14 @@ export class NetworkIsolator {
       const containerCount = Object.keys(containers).length;
 
       if (containerCount > 1) {
-        issues.push(`Multiple containers in isolated network: ${containerCount}`);
+        issues.push(
+          `Multiple containers in isolated network: ${containerCount}`,
+        );
       }
 
       const isIsolated = issues.length === 0;
 
-      logger.info('Network isolation verified', {
+      logger.info("Network isolation verified", {
         networkId,
         isIsolated,
         issues: issues.length,
@@ -403,13 +429,13 @@ export class NetworkIsolator {
 
       return { isIsolated, issues };
     } catch (error: unknown) {
-      logger.error('Failed to verify network isolation', {
+      logger.error("Failed to verify network isolation", {
         networkId,
         error: error instanceof Error ? error.message : String(error),
       });
       return {
         isIsolated: false,
-        issues: ['Failed to verify isolation'],
+        issues: ["Failed to verify isolation"],
       };
     }
   }
@@ -434,7 +460,7 @@ export class NetworkIsolator {
         await this.removeTaskNetwork(networkId);
         removed++;
       } catch (error: unknown) {
-        logger.error('Failed to remove network during emergency cleanup', {
+        logger.error("Failed to remove network during emergency cleanup", {
           networkId,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -442,7 +468,7 @@ export class NetworkIsolator {
     }
 
     this.activeNetworks.clear();
-    logger.warn('Emergency network cleanup completed', { removed });
+    logger.warn("Emergency network cleanup completed", { removed });
     return removed;
   }
 
@@ -452,35 +478,47 @@ export class NetworkIsolator {
    * @param target - Target to test connectivity to
    * @returns Connectivity status
    */
-  public async testConnectivity(containerId: string, target: string): Promise<boolean> {
+  public async testConnectivity(
+    containerId: string,
+    target: string,
+  ): Promise<boolean> {
     try {
       const container = this.docker.getContainer(containerId);
 
       // Execute ping test
       const exec = await container.exec({
-        Cmd: ['ping', '-c', '1', '-W', '1', target],
+        Cmd: ["ping", "-c", "1", "-W", "1", target],
         AttachStdout: true,
         AttachStderr: true,
       });
 
       const stream = await exec.start({ Detach: false });
       return new Promise((resolve) => {
-        (stream as any).on('end', () => resolve(true));
-        (stream as any).on('error', () => resolve(false));
+        (stream as any).on("end", () => resolve(true));
+        (stream as any).on("error", () => resolve(false));
 
         // Timeout after 2 seconds
         setTimeout(() => resolve(false), 2000);
       });
     } catch (error: unknown) {
-      logger.debug('Connectivity test failed (expected for isolated networks)', {
-        containerId,
-        target,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.debug(
+        "Connectivity test failed (expected for isolated networks)",
+        {
+          containerId,
+          target,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       return false;
     }
   }
 }
 
-// Export singleton instance
-export const networkIsolator = NetworkIsolator.getInstance();
+// Lazy-loaded singleton export for Jest compatibility
+let _instance: NetworkIsolator | null = null;
+export const networkIsolator = (): NetworkIsolator => {
+  if (!_instance) {
+    _instance = NetworkIsolator.getInstance();
+  }
+  return _instance;
+};
