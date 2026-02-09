@@ -22,9 +22,6 @@ jest.mock("dockerode", () => {
 });
 
 describe("NetworkManager", () => {
-  if (!dockerHelper.isAvailable()) {
-    return;
-  }
   let networkManager: NetworkManager;
   let mockNetwork: any;
 
@@ -71,51 +68,12 @@ describe("NetworkManager", () => {
     };
     mockNetwork = mockDockerInstance.getNetwork("test-network-id");
 
-    // Import and clear NetworkIsolator singleton
-    const { NetworkIsolator } = require("../../src/util/network-isolator");
-    (NetworkIsolator as any).instance = undefined;
-
-    // Skip TypeScript mock type errors - jest.mocked() returns never type
-    // Tests will still run at runtime despite type errors
-    // @ts-expect-error - Jest mock types are incompatible with TypeScript
-    const createNetworkMock = jest.fn().mockResolvedValue({
-      id: "test-network-id",
-    });
-    const getNetworkMock = jest.fn().mockReturnValue({
-      connect: jest.fn().mockResolvedValue(undefined as any),
-      disconnect: jest.fn().mockResolvedValue(undefined as any),
-      remove: jest.fn().mockResolvedValue(undefined as any),
-      inspect: jest.fn().mockResolvedValue({
-        Id: "test-network-id",
-        Name: "test-network",
-        Driver: "bridge",
-        Scope: "local",
-        Internal: true,
-        Labels: {
-          "opencode.taskId": "test-task-1",
-          "opencode.managed": "true",
-        },
-        Created: Date.now() / 1000,
-        Containers: {},
-      } as any),
-    });
-    const listNetworksMock = jest.fn().mockResolvedValue([] as any);
-    const infoMock = jest.fn().mockResolvedValue({} as any);
-
-    mockDocker = {
-      createNetwork: createNetworkMock,
-      getNetwork: getNetworkMock,
-      listNetworks: listNetworksMock,
-      info: infoMock,
-    };
-    mockNetwork = mockDockerInstance.getNetwork("test-network-id");
-
     // Set environment variables
     process.env.DOCKER_SOCKET_PATH = "/var/run/docker.sock";
     process.env.DOCKER_NETWORK_PREFIX = "opencode-";
 
-    // Get NetworkManager instance
-    networkManager = NetworkManager.getInstance();
+    // Get NetworkManager instance with mocked Dockerode
+    networkManager = NetworkManager.getInstance(mockDockerInstance as any);
   });
 
   afterEach(async () => {
