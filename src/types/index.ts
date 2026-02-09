@@ -33,12 +33,22 @@ export interface TaskFilters {
 export interface ContainerInfo {
   id: string;
   name: string;
+  shortId?: string;
   image: string;
   status: ContainerStatus;
   createdAt: Date;
   ports?: ContainerPort[];
   networks?: string[];
-  resources?: ResourceLimits;
+  resources?: ContainerResources;
+  labels?: Record<string, string>;
+  hostname?: string;
+  workingDir?: string;
+}
+
+export interface ContainerResources {
+  memory?: number;
+  nanoCpus?: number;
+  pidsLimit?: number;
 }
 
 export type ContainerStatus =
