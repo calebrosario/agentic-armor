@@ -124,6 +124,8 @@ export class NetworkManager {
     }
 
     try {
+      await this.docker.info();
+
       // Clean up any orphaned networks from previous sessions
       await this.cleanupOrphanedNetworks();
 

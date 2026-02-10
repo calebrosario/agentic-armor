@@ -70,7 +70,7 @@ describe("NetworkManager", () => {
 
     // Set environment variables
     process.env.DOCKER_SOCKET_PATH = "/var/run/docker.sock";
-    process.env.DOCKER_NETWORK_PREFIX = "opencode-";
+    process.env.DOCKER_NETWORK_PREFIX = "opencode";
 
     // Get NetworkManager instance with mocked Dockerode
     networkManager = NetworkManager.getInstance(mockDockerInstance as any);
@@ -525,6 +525,7 @@ describe("NetworkManager", () => {
     });
 
     it("should use NETWORK_INITIALIZATION_FAILED for init errors", async () => {
+      (NetworkManager as any).instance = undefined;
       const newManager = NetworkManager.getInstance();
       mockDockerInstance.info = jest
         .fn()
