@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { dashboard, getFormattedDashboard } from "../../monitoring/dashboard";
+import { getErrorMessage } from "../../util/errors";
 
 export const metricsCommand = new Command("metrics")
   .description("Show system metrics and performance data")
@@ -51,9 +52,7 @@ export const metricsCommand = new Command("metrics")
 
       console.log("\n" + "═".repeat(60) + "\n");
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("[FAIL] Failed to get metrics:", errorMessage);
+      console.error("[FAIL] Failed to get metrics:", getErrorMessage(error));
       process.exit(1);
     }
   });

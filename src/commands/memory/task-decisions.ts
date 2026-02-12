@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { multiLayerPersistence } from "../../persistence/multi-layer";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Display agent decisions for a task
@@ -41,9 +42,10 @@ export const taskDecisionsCommand = new Command("task-decisions")
 
         displayDecisions(limited, taskId, filtered.length, limit);
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("❌ Failed to load task decisions:", errorMessage);
+        console.error(
+          "❌ Failed to load task decisions:",
+          getErrorMessage(error),
+        );
         process.exit(1);
       }
     },

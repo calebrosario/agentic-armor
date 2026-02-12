@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { multiLayerPersistence } from "../../persistence/multi-layer";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Restore a task from a checkpoint
@@ -68,9 +69,10 @@ export const restoreCheckpointCommand = new Command("restore-checkpoint")
         console.log(`   Task Status: pending`);
         console.log(`   Task is ready to be resumed`);
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("❌ Failed to restore checkpoint:", errorMessage);
+        console.error(
+          "❌ Failed to restore checkpoint:",
+          getErrorMessage(error),
+        );
         process.exit(1);
       }
     },

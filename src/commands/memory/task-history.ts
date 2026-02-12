@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { multiLayerPersistence } from "../../persistence/multi-layer";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Display task execution history from JSONL logs
@@ -45,9 +46,10 @@ export const taskHistoryCommand = new Command("task-history")
 
         displayLogs(logs, taskId);
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("❌ Failed to load task history:", errorMessage);
+        console.error(
+          "❌ Failed to load task history:",
+          getErrorMessage(error),
+        );
         process.exit(1);
       }
     },

@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { multiLayerPersistence } from "../../persistence/multi-layer";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Create a checkpoint for a task
@@ -35,9 +36,7 @@ export const checkpointCommand = new Command("checkpoint")
       console.log(`   Checkpoint ID: ${checkpointId}`);
       console.log(`   Description: ${description}`);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("❌ Failed to create checkpoint:", errorMessage);
+      console.error("❌ Failed to create checkpoint:", getErrorMessage(error));
       process.exit(1);
     }
   });

@@ -4,6 +4,7 @@
 import { Command } from "commander";
 import { health } from "../../monitoring/health";
 import { HealthStatus } from "../../monitoring/health";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Display system health check results
@@ -100,9 +101,10 @@ export const healthCommand = new Command("health")
         process.exit(1);
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("[FAIL] Failed to run health check:", errorMessage);
+      console.error(
+        "[FAIL] Failed to run health check:",
+        getErrorMessage(error),
+      );
       process.exit(1);
     }
   });

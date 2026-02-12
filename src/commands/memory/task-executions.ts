@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Display task execution statistics and details
@@ -24,9 +25,10 @@ export const taskExecutionsCommand = new Command("task-executions")
       // For now, we show task-level execution details
       displayExecutionInfo(task);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("❌ Failed to get task executions:", errorMessage);
+      console.error(
+        "❌ Failed to get task executions:",
+        getErrorMessage(error),
+      );
       process.exit(1);
     }
   });

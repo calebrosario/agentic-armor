@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Display task statistics and distributions
@@ -39,9 +40,7 @@ export const taskStatsCommand = new Command("task-stats")
 
       displayStatistics(allTasks, statusCounts, ownerCounts);
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("❌ Failed to get task stats:", errorMessage);
+      console.error("❌ Failed to get task stats:", getErrorMessage(error));
       process.exit(1);
     }
   });

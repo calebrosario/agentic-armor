@@ -3,6 +3,7 @@
 
 import { Command } from "commander";
 import { taskRegistry } from "../../task-registry/registry";
+import { getErrorMessage } from "../../util/errors";
 
 /**
  * Search tasks by name or metadata with filters
@@ -72,9 +73,7 @@ export const findTaskCommand = new Command("find-task")
 
         displaySearchResults(matches, query, options);
       } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        console.error("❌ Failed to find tasks:", errorMessage);
+        console.error("❌ Failed to find tasks:", getErrorMessage(error));
         process.exit(1);
       }
     },
