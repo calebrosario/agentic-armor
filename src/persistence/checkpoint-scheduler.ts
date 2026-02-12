@@ -47,10 +47,10 @@ const RISK_INTERVALS: Record<RiskLevel, number> = {
 };
 
 const RISK_THRESHOLDS = {
-  operationCount: { medium: 10, high: 50, critical: 100 },
-  filesChanged: { medium: 20, high: 100, critical: 500 },
-  duration: { medium: 600000, high: 1800000, critical: 3600000 },
-  previousFailures: { medium: 1, high: 3, critical: 5 },
+  operationCount: { medium: 15, high: 60, critical: 120 },
+  filesChanged: { medium: 30, high: 150, critical: 600 },
+  duration: { medium: 900000, high: 2700000, critical: 5400000 },
+  previousFailures: { medium: 2, high: 4, critical: 8 },
 };
 
 export class CheckpointScheduler {

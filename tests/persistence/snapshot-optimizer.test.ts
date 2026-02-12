@@ -3,7 +3,6 @@
  * Phase 1: Stability (v1.1) - Edge Case 8
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "jest";
 import {
   SnapshotOptimizer,
   SnapshotOptions,
@@ -13,7 +12,7 @@ import { promises as fs } from "fs";
 import { join } from "path";
 
 describe("SnapshotOptimizer", () => {
-  const testDataDir = join(__dirname, "..", ".data", "snapshot-optimizer");
+  const testDataDir = join(process.cwd(), "data", "tasks");
   let optimizer: SnapshotOptimizer;
 
   beforeEach(async () => {
@@ -57,7 +56,7 @@ describe("SnapshotOptimizer", () => {
 
       await fs.mkdir(sourceDir, { recursive: true });
       await fs.writeFile(join(sourceDir, "file.txt"), "content");
-      await fs.writeFile(join(sourceDir, "node_modules", "excluded"));
+      await fs.writeFile(join(sourceDir, "node_modules"), "excluded");
 
       const options: SnapshotOptions = {
         includePaths: ["source"],
@@ -77,8 +76,8 @@ describe("SnapshotOptimizer", () => {
     it("should chunk large files", async () => {
       const taskId = "task-chunk-1";
       const largeFile = join(testDataDir, taskId, "large.bin");
-      const chunkSize = 50 * 1024 * 1024;
-      const largeContent = Buffer.alloc(chunkSize + 1);
+      const largeSize = 101 * 1024 * 1024; // 101MB - just over LARGE_FILE_THRESHOLD of 100MB
+      const largeContent = Buffer.alloc(largeSize);
 
       await fs.mkdir(join(testDataDir, taskId), { recursive: true });
       await fs.writeFile(largeFile, largeContent);
@@ -109,12 +108,27 @@ describe("SnapshotOptimizer", () => {
   describe("getSnapshotInfo", () => {
     it("should return snapshot metadata", async () => {
       const taskId = "task-info-1";
-      const info = await optimizer.getSnapshotInfo(taskId, "snapshot-123");
+      const snapshotId = "snapshot-123";
 
-      if (info) {
-        expect(info.id).toBeDefined();
-        expect(info.taskId).toBe(taskId);
-      }
+      // Create a snapshot with manifest
+      const snapshotPath = join(testDataDir, taskId, "snapshots", snapshotId);
+      await fs.mkdir(snapshotPath, { recursive: true });
+      const manifest = {
+        id: snapshotId,
+        taskId,
+        timestamp: new Date().toISOString(),
+        files: ["file1.txt"],
+      };
+      await fs.writeFile(
+        join(snapshotPath, "manifest.json"),
+        JSON.stringify(manifest),
+      );
+
+      const info = await optimizer.getSnapshotInfo(taskId, snapshotId);
+
+      expect(info).toBeDefined();
+      expect(info?.id).toBe(snapshotId);
+      expect(info?.taskId).toBe(taskId);
     });
   });
 
@@ -132,15 +146,45 @@ describe("SnapshotOptimizer", () => {
   describe("reassembleChunkedFile", () => {
     it("should reassemble chunked file", async () => {
       const taskId = "task-reassemble-1";
+      const chunkDir = join(testDataDir, taskId, "chunks", "large.bin");
+      await fs.mkdir(chunkDir, { recursive: true });
+
+      // Create chunks and manifest (using 50MB chunk size to match CHUNK_SIZE constant)
+      const chunkSize = 50 * 1024 * 1024;
+      const chunk1 = Buffer.alloc(chunkSize);
+      const chunk2 = Buffer.alloc(chunkSize);
+
+      const manifest = [
+        {
+          originalFile: "large.bin",
+          chunkIndex: 0,
+          chunkSize: chunk1.length,
+          totalChunks: 2,
+        },
+        {
+          originalFile: "large.bin",
+          chunkIndex: 1,
+          chunkSize: chunk2.length,
+          totalChunks: 2,
+        },
+      ];
+
+      await fs.writeFile(join(chunkDir, "chunk_0.bin"), chunk1);
+      await fs.writeFile(join(chunkDir, "chunk_1.bin"), chunk2);
+      await fs.writeFile(
+        join(chunkDir, "chunk_manifest.json"),
+        JSON.stringify(manifest),
+      );
 
       const result = await optimizer.reassembleChunkedFile(
         taskId,
         "chunks/large.bin",
       );
 
-      if (result) {
-        expect(result).toContain("large.bin");
-      }
+      expect(result).toContain("large.bin");
+      const assembledStats = await fs.stat(result);
+      // Implementation writes at positions based on chunkIndex * CHUNK_SIZE, so final size is 2 * CHUNK_SIZE = 100MB
+      expect(assembledStats.size).toBe(2 * chunkSize);
     });
   });
 });

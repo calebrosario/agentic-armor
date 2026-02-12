@@ -3,7 +3,6 @@
  * Phase 1: Stability (v1.1) - Edge Case 10
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "jest";
 import {
   CheckpointScheduler,
   RiskLevel,

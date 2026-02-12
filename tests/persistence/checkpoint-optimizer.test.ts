@@ -1,4 +1,3 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { promises as fs } from "fs";
 import { join } from "path";
 import {
@@ -26,7 +25,7 @@ describe("CheckpointOptimizer", () => {
     } catch {
       // Directory might not exist
     }
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   describe("getInstance", () => {

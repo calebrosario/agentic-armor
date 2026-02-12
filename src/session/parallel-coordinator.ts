@@ -203,6 +203,19 @@ export class ParallelCoordinator {
     strategy: ResolutionStrategy,
   ): Promise<ResolutionResult> {
     const conflict = this.activeConflicts.get(conflictId);
+
+    // For SKIP and RETRY_LATER, consider resolution successful even if conflict not found
+    // (operation was never started or already handled)
+    if (!conflict && (strategy === "SKIP" || strategy === "RETRY_LATER")) {
+      return {
+        conflictId,
+        strategy,
+        success: true,
+        resolvedAt: new Date(),
+        details: "Operation skipped (no active conflict)",
+      };
+    }
+
     if (!conflict) {
       return {
         conflictId,
@@ -323,7 +336,11 @@ export class ParallelCoordinator {
       throw new Error(`Agent not registered: ${agentId}`);
     }
 
-    const isolatedPath = join(this.basePath, agent.taskId, `agent_${agentId}`);
+    const isolatedPath = join(
+      this.basePath,
+      agent.taskId,
+      agentId.replace(/-/g, "_"),
+    );
     await fs.mkdir(isolatedPath, { recursive: true });
 
     const workspaceInfo: WorkspaceInfo = {
