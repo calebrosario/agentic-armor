@@ -87,7 +87,8 @@ export async function acquireLock(
 
   while (Date.now() - start < timeout) {
     try {
-      const fd = await fs.open(lockFile, "wx");
+      // Use O_EXCL flag to ensure atomic file creation
+      const fd = await fs.open(lockFile, "wx", 0o600);
       await fd.close();
       return;
     } catch (error: any) {
