@@ -162,6 +162,32 @@ export class OpenCodeError extends Error {
   }
 }
 
+// Session interruption types (Edge Case 4)
+export interface InterruptionEvent {
+  id: string;
+  timestamp: Date;
+  type: InterruptionType;
+  source: "signal" | "timeout" | "disconnect" | "error";
+  signal?: "SIGINT" | "SIGTERM" | "SIGHUP";
+  reason?: string;
+  affectedTasks: string[];
+  stateSaved: boolean;
+}
+
+export type InterruptionType = "graceful" | "immediate";
+
+export interface ResumeOptions {
+  taskId: string;
+  fromCheckpoint?: boolean;
+  skipInterruptedHooks?: boolean;
+}
+
+export interface HeartbeatConfig {
+  enabled: boolean;
+  interval: number;
+  timeout: number;
+}
+
 // Configuration types
 export interface DatabaseConfig {
   path: string;

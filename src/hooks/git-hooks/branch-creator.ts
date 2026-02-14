@@ -1,41 +1,66 @@
-// Branch Creator Hook - Phase 2: MVP Core
-// Week 12, Task 12.4: Pre-task Branch Creator Hook
+// Branch Creator Hook - Phase 2: Edge Cases
+// Week 15, Day 1-2: Git Branch Naming Conflicts
 
-import { exec } from 'child_process';
-import { logger } from '../../util/logger';
-import { BeforeTaskStartHook } from '../task-lifecycle';
+import { logger } from "../../util/logger";
+import { BeforeTaskStartHook } from "../task-lifecycle";
+import { createTaskBranch } from "../../util/git-operations";
 
 /**
- * Create Git branch for task
+ * Create Git branch for task with conflict handling
+ *
+ * Edge Case 6: Git Branch Naming Conflicts
  *
  * This hook:
  * 1. Creates Git branch with naming convention: task/TASK_ID
- * 2. Initializes workspace as Git repo if needed
- * 3. Handles existing branches gracefully
+ * 2. Detects existing branches before creation
+ * 3. Generates unique branch names on conflict (timestamp + random)
+ * 4. Uses atomic operations with file locks
+ * 5. Implements retry logic (max 10 attempts)
+ * 6. Initializes workspace as Git repo if needed
  */
 export function createPreTaskBranchCreatorHook(): BeforeTaskStartHook {
   return async (taskId: string, agentId: string) => {
-    const branchName = `task/${taskId}`;
-    
+    logger.info("Creating task branch with conflict handling", {
+      taskId,
+      agentId,
+    });
+
     try {
-      // Note: In a real implementation, this would use the actual workspace path
-      // For now, this is a placeholder showing the pattern
-      logger.info('Creating task branch', { taskId, branchName, agentId });
+      const result = await createTaskBranch(taskId);
 
-      // Example implementation:
-      // await exec(`git init ${workspacePath}`);
-      // await exec(`git checkout -b ${branchName}`, { cwd: workspacePath });
+      if (result.success) {
+        logger.info("Task branch created successfully", {
+          taskId,
+          branchName: result.branchName,
+          attempts: result.attempts,
+          agentId,
+        });
 
-      logger.info('Task branch created', { taskId, branchName });
+        if (result.note) {
+          logger.info("Branch creation note", {
+            taskId,
+            note: result.note,
+          });
+        }
+      } else {
+        logger.error("Failed to create task branch", {
+          taskId,
+          error: result.error,
+          attempts: result.attempts,
+        });
+
+        throw new Error(`Failed to create branch: ${result.error}`);
+      }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('Failed to create task branch', {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error("Task branch creation failed", {
         taskId,
-        branchName,
+        agentId,
         error: errorMessage,
       });
 
-      throw new Error(`Failed to create branch ${branchName}: ${errorMessage}`);
+      throw new Error(`Task branch creation failed: ${errorMessage}`);
     }
   };
 }

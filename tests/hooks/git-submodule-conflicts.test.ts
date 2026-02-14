@@ -1,0 +1,227 @@
+// Git Submodule Conflict Tests - Phase 2: Edge Cases
+// Week 15, Day 1-2: Testing & Validation
+
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import {
+  getSubmoduleStatus,
+  resolveSubmoduleConflict,
+} from "../../../src/util/git-operations";
+import * as fs from "fs/promises";
+import * as path from "path";
+import { exec } from "child_process";
+
+describe("Git Submodule Conflict Detection (Edge Case 9)", () => {
+  const testWorkspaceBase = "/tmp/test-submodule-workspace";
+  const taskMemoryPath = ".task-memory";
+
+  beforeEach(async () => {
+    // Clean up test workspace
+    await fs
+      .rm(testWorkspaceBase, { recursive: true, force: true })
+      .catch(() => {});
+    // Create test workspace
+    await fs.mkdir(testWorkspaceBase, { recursive: true });
+    // Initialize git repo
+    await exec("git init", { cwd: testWorkspaceBase });
+    // Create initial commit
+    const readmeFile = path.join(testWorkspaceBase, "README.md");
+    await fs.writeFile(readmeFile, "# Test");
+    await exec("git add README.md", { cwd: testWorkspaceBase });
+    await exec('git commit -m "Initial commit"', { cwd: testWorkspaceBase });
+
+    // Create task memory directory
+    const memoryDir = path.join(testWorkspaceBase, taskMemoryPath);
+    await fs.mkdir(memoryDir, { recursive: true });
+    const memoryFile = path.join(memoryDir, "data.json");
+    await fs.writeFile(memoryFile, "{}");
+    await exec("git add .", { cwd: testWorkspaceBase });
+    await exec('git commit -m "Add task memory"', { cwd: testWorkspaceBase });
+
+    // Add as submodule
+    await exec(`git submodule add ${memoryDir} ${taskMemoryPath}`, {
+      cwd: testWorkspaceBase,
+    });
+  });
+
+  afterEach(async () => {
+    // Clean up test workspace
+    await fs
+      .rm(testWorkspaceBase, { recursive: true, force: true })
+      .catch(() => {});
+  });
+
+  describe("Submodule Status Detection", () => {
+    it("should return clean status for new submodule", async () => {
+      const status = await getSubmoduleStatus(
+        testWorkspaceBase,
+        taskMemoryPath,
+      );
+      expect(status).toBe("clean");
+    });
+
+    it("should return dirty status for modified submodule", async () => {
+      // Modify submodule
+      const memoryFile = path.join(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "data.json",
+      );
+      await fs.writeFile(memoryFile, '{"modified": true}');
+
+      const status = await getSubmoduleStatus(
+        testWorkspaceBase,
+        taskMemoryPath,
+      );
+      expect(status).toBe("dirty");
+    });
+
+    it("should return diverged status for modified with remote", async () => {
+      // Create a remote reference
+      await exec(
+        "git config --file .gitmodules submodule.test.url https://example.com/test",
+        {
+          cwd: testWorkspaceBase,
+        },
+      );
+
+      // Modify .gitmodules to simulate divergence
+      await exec("git config --file .gitmodules submodule.test.branch main", {
+        cwd: testWorkspaceBase,
+      });
+
+      const status = await getSubmoduleStatus(
+        testWorkspaceBase,
+        taskMemoryPath,
+      );
+      expect(status).toBe("diverged");
+    });
+
+    it("should return error for non-existent submodule", async () => {
+      const status = await getSubmoduleStatus(
+        testWorkspaceBase,
+        "nonexistent-path",
+      );
+      expect(status).toBe("error");
+    });
+  });
+
+  describe("Conflict Resolution", () => {
+    it("should resolve dirty submodule with merge strategy", async () => {
+      // Make submodule dirty
+      const memoryFile = path.join(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "data.json",
+      );
+      await fs.writeFile(memoryFile, '{"modified": true}');
+
+      const result = await resolveSubmoduleConflict(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "merge",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.resolution).toBe("merge");
+    });
+
+    it("should resolve diverged submodule with rebase strategy", async () => {
+      // Configure remote
+      await exec(
+        "git config --file .gitmodules submodule.test.url https://example.com/test",
+        {
+          cwd: testWorkspaceBase,
+        },
+      );
+      await exec("git config --file .gitmodules submodule.test.branch main", {
+        cwd: testWorkspaceBase,
+      });
+
+      const result = await resolveSubmoduleConflict(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "rebase",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.resolution).toBe("rebase");
+    });
+
+    it("should skip submodule update with skip strategy", async () => {
+      // Make submodule dirty
+      const memoryFile = path.join(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "data.json",
+      );
+      await fs.writeFile(memoryFile, '{"modified": true}');
+
+      const result = await resolveSubmoduleConflict(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "skip",
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.resolution).toBe("skip");
+    });
+
+    it("should handle merge failure gracefully", async () => {
+      // Corrupt .gitmodules to cause merge failure
+      const gitmodulesPath = path.join(testWorkspaceBase, ".gitmodules");
+      await fs.writeFile(gitmodulesPath, "invalid content");
+
+      const result = await resolveSubmoduleConflict(
+        testWorkspaceBase,
+        taskMemoryPath,
+        "merge",
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  describe("Integration Tests", () => {
+    it("should handle submodule creation in real workflow", async () => {
+      // This test verifies the complete hook workflow
+      const { BeforeTaskStartHook } =
+        await import("../../../src/hooks/git-hooks/submodule-creator");
+      const hook = createSubmoduleCreatorHook();
+
+      // Create main repo
+      const mainRepoBase = "/tmp/test-main-repo";
+      await fs
+        .rm(mainRepoBase, { recursive: true, force: true })
+        .catch(() => {});
+      await fs.mkdir(mainRepoBase, { recursive: true });
+      await exec("git init", { cwd: mainRepoBase });
+      await exec('git commit -m "Initial"', { cwd: mainRepoBase });
+
+      // Create task memory in main repo
+      const taskMemoryDir = path.join(mainRepoBase, taskMemoryPath);
+      await fs.mkdir(taskMemoryDir, { recursive: true });
+      await fs.writeFile(path.join(taskMemoryDir, "data.json"), "{}");
+      await exec("git add .", { cwd: mainRepoBase });
+      await exec('git commit -m "Add task memory"', { cwd: mainRepoBase });
+
+      // Call the hook
+      const taskId = "integration-test-123";
+      const agentId = "test-agent";
+
+      // Mock workspace path for hook
+      process.env.OPENCODE_WORKSPACE = mainRepoBase;
+
+      await hook(taskId, agentId);
+
+      // Verify submodule was created
+      const { stdout } = await exec("git submodule status", {
+        cwd: mainRepoBase,
+      });
+      expect(stdout).toContain(taskMemoryPath);
+
+      // Cleanup
+      delete process.env.OPENCODE_WORKSPACE;
+    });
+  });
+});
