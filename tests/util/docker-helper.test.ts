@@ -34,7 +34,7 @@ describe("DockerHelper", () => {
     // Reset environment after each test
     process.env = { ...originalEnv };
     // Clear singleton cache
-    (DockerHelper as any).instance = undefined;
+    DockerHelper.resetInstance();
     // Clear any cached instances
     jest.clearAllMocks();
   });

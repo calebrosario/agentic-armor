@@ -61,6 +61,13 @@ export class MultiLayerPersistence {
     return MultiLayerPersistence.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    MultiLayerPersistence.instance = undefined as any;
+  }
+
   // Layer 1: state.json - Current task state (fast access)
 
   public async saveState(taskId: string, state: TaskState): Promise<void> {

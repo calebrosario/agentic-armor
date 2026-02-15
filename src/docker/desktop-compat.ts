@@ -58,6 +58,13 @@ export class DesktopCompatibility {
     return DesktopCompatibility.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    DesktopCompatibility.instance = undefined as any;
+  }
+
   public async detectDesktopVersion(): Promise<DesktopVersion | null> {
     if (this.cachedVersion) {
       return this.cachedVersion;

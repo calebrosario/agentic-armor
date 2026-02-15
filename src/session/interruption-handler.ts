@@ -54,6 +54,13 @@ export class InterruptionHandler extends EventEmitter {
   }
 
   /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    InterruptionHandler.instance = undefined as any;
+  }
+
+  /**
    * Start tracking a session
    */
   public startSession(

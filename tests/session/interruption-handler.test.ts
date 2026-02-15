@@ -23,7 +23,7 @@ describe("InterruptionHandler", () => {
     jest.clearAllTimers();
 
     // Reset singleton instance
-    (InterruptionHandler as any).instance = undefined;
+    InterruptionHandler.resetInstance();
     handler = InterruptionHandler.getInstance();
   });
 

@@ -27,13 +27,7 @@ describe("NetworkManager", () => {
 
   beforeEach(() => {
     // Clear singleton instances
-    (NetworkManager as any).instance = undefined;
-
-    // Clear NetworkIsolator singleton from module cache
-    jest.resetModules();
-    jest.unmock("../../src/util/network-isolator");
-    const NetworkIsolatorModule = require("../../src/util/network-isolator");
-    (NetworkIsolatorModule.NetworkIsolator as any).instance = undefined;
+    NetworkManager.resetInstance();
 
     // Setup mock Docker instance BEFORE NetworkManager is instantiated
     const createNetworkMock = jest.fn().mockResolvedValue({

@@ -17,6 +17,7 @@ describe("DesktopCompatibility", () => {
   let compat: DesktopCompatibility;
 
   beforeEach(() => {
+    DesktopCompatibility.resetInstance();
     compat = DesktopCompatibility.getInstance();
   });
 

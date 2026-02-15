@@ -67,6 +67,13 @@ export class CheckpointScheduler {
     return CheckpointScheduler.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    CheckpointScheduler.instance = undefined as any;
+  }
+
   public assessRisk(taskId: string, context: RiskContext): RiskLevel {
     let score = 0;
 

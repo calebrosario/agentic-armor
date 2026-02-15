@@ -113,6 +113,13 @@ export class ParallelCoordinator {
     return ParallelCoordinator.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    ParallelCoordinator.instance = undefined as any;
+  }
+
   public async registerAgent(
     agentId: string,
     taskId: string,

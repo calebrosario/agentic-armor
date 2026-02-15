@@ -91,6 +91,13 @@ export class OrphanDetector {
   }
 
   /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    OrphanDetector.instance = undefined as any;
+  }
+
+  /**
    * Initialize the detector
    */
   public async initialize(): Promise<void> {

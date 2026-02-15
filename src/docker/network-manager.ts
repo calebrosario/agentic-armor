@@ -115,6 +115,13 @@ export class NetworkManager {
   }
 
   /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    NetworkManager.instance = undefined as any;
+  }
+
+  /**
    * Initialize Network Manager
    */
   async initialize(): Promise<void> {

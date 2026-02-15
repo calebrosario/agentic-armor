@@ -29,6 +29,13 @@ export class DockerHelper {
   }
 
   /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    DockerHelper.instance = undefined as any;
+  }
+
+  /**
    * Detect Docker socket path based on platform and environment
    * @returns Socket path string
    * @throws OpenCodeError if no socket found

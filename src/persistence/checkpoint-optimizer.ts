@@ -64,6 +64,13 @@ export class CheckpointOptimizer {
     return CheckpointOptimizer.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   */
+  public static resetInstance(): void {
+    CheckpointOptimizer.instance = undefined as any;
+  }
+
   public async compressCheckpoint(
     taskId: string,
     checkpointId: string,
