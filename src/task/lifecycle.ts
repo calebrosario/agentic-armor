@@ -1,7 +1,3 @@
-// Task Lifecycle Manager - Phase 2: MVP Core
-// Week 9, Day 4: Task Lifecycle Implementation
-// Week 12, Day 1: Hooks Integration
-
 import { Task, TaskStatus } from "../types";
 import type { TaskConfig, TaskResult } from "../types/lifecycle";
 import { taskRegistry } from "../task-registry/registry";
@@ -10,6 +6,8 @@ import { logger } from "../util/logger";
 import { lockManager } from "../util/lock-manager";
 import { taskLifecycleHooks } from "../hooks/task-lifecycle";
 import { taskMetrics } from "../monitoring/metrics";
+import { TaskErrors } from "../util/errors-custom";
+import { LOCK_PREFIX } from "../util/task-lifecycle-constants";
 
 export class TaskLifecycle {
   private static instance: TaskLifecycle;
@@ -21,6 +19,47 @@ export class TaskLifecycle {
       TaskLifecycle.instance = new TaskLifecycle();
     }
     return TaskLifecycle.instance;
+  }
+
+  private async getTaskOrThrow(taskId: string): Promise<Task> {
+    const task = await taskRegistry.getById(taskId);
+    if (!task) {
+      throw TaskErrors.taskNotFound(taskId);
+    }
+    return task;
+  }
+
+  private async executeTransition<T>(
+    taskId: string,
+    transitionType: "start" | "complete" | "fail" | "cancel" | "delete",
+    lockOwner: string,
+    transitionFn: (task: Task) => Promise<T>,
+  ): Promise<T> {
+    const task = await this.getTaskOrThrow(taskId);
+
+    return lockManager.withLock(
+      `${LOCK_PREFIX.TASK}${taskId}`,
+      `${LOCK_PREFIX.LIFECYCLE}${lockOwner}`,
+      async () => {
+        const result = await transitionFn(task);
+
+        if (transitionType !== "delete") {
+          await multiLayerPersistence.appendLog(taskId, {
+            timestamp: new Date().toISOString(),
+            level:
+              transitionType === "cancel"
+                ? "warning"
+                : transitionType === "fail"
+                  ? "error"
+                  : "info",
+            message: `Task ${transitionType}`,
+            data: { fromStatus: task.status, toStatus: task.status },
+          });
+        }
+
+        return result;
+      },
+    );
   }
 
   /**
@@ -73,47 +112,25 @@ export class TaskLifecycle {
    * Executes: beforeTaskStart hooks -> start -> afterTaskStart hooks
    */
   public async startTask(taskId: string, agentId: string): Promise<Task> {
-    // Execute before hooks
     await taskLifecycleHooks.executeBeforeTaskStart(taskId, agentId);
 
-    return lockManager.withLock(
-      `task:${taskId}`,
-      `lifecycle:${agentId}`,
-      async () => {
-        const task = await taskRegistry.getById(taskId);
-        if (!task) {
-          throw new Error(`Task not found: ${taskId}`);
-        }
+    return this.executeTransition(taskId, "start", agentId, async (task) => {
+      if (task.status !== "pending") {
+        throw TaskErrors.invalidStateTransition(taskId, task.status, "running");
+      }
 
-        // Validate state transition
-        if (task!.status !== "pending") {
-          throw new Error(`Cannot start task with status: ${task!.status}`);
-        }
+      const updated = await taskRegistry.update(taskId, {
+        status: "running",
+      });
+      if (!updated) {
+        throw TaskErrors.taskUpdateFailed(taskId);
+      }
 
-        // Update task status
-        const updated = await taskRegistry.update(taskId, {
-          status: "running",
-        });
-        if (!updated) {
-          throw new Error(`Failed to update task: ${taskId}`);
-        }
+      logger.info("Task started", { taskId, agentId });
+      await taskLifecycleHooks.executeAfterTaskStart(taskId, agentId);
 
-        // Log state transition
-        await multiLayerPersistence.appendLog(taskId, {
-          timestamp: new Date().toISOString(),
-          level: "info",
-          message: `Task started by agent ${agentId}`,
-          data: { fromStatus: task.status, toStatus: "running", agentId },
-        });
-
-        logger.info("Task started", { taskId, agentId });
-
-        // Execute after hooks
-        await taskLifecycleHooks.executeAfterTaskStart(taskId, agentId);
-
-        return updated!;
-      },
-    );
+      return updated;
+    });
   }
 
   /**
@@ -121,37 +138,31 @@ export class TaskLifecycle {
    * Executes: beforeTaskComplete hooks -> complete -> afterTaskComplete hooks
    */
   public async completeTask(taskId: string, result: TaskResult): Promise<Task> {
-    // Execute before hooks
     await taskLifecycleHooks.executeBeforeTaskComplete(taskId, result);
-
-    const task = await taskRegistry.getById(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
 
     const timerId = taskMetrics.startTimer({ operation: "complete" });
 
     try {
-      return await lockManager.withLock(
-        `task:${taskId}`,
-        `lifecycle:${task.owner || "system"}`,
-        async () => {
-          // Validate state transition
-          if (task!.status !== "running") {
-            throw new Error(
-              `Cannot complete task with status: ${task!.status}`,
+      const completedTask = await this.executeTransition(
+        taskId,
+        "complete",
+        "system",
+        async (task) => {
+          if (task.status !== "running") {
+            throw TaskErrors.invalidStateTransition(
+              taskId,
+              task.status,
+              "completed",
             );
           }
 
-          // Update task status
           const updated = await taskRegistry.update(taskId, {
             status: "completed",
           });
           if (!updated) {
-            throw new Error(`Failed to update task: ${taskId}`);
+            throw TaskErrors.taskUpdateFailed(taskId);
           }
 
-          // Save result to persistence
           await multiLayerPersistence.appendLog(taskId, {
             timestamp: new Date().toISOString(),
             level: "info",
@@ -159,18 +170,16 @@ export class TaskLifecycle {
             data: { result },
           });
 
-          // Track metrics
           taskMetrics.completed({ status: "completed" });
-          taskMetrics.stopTimer(timerId);
-
           logger.info("Task completed", { taskId, result });
-
-          // Execute after hooks
           await taskLifecycleHooks.executeAfterTaskComplete(taskId, result);
 
-          return updated!;
+          return updated;
         },
       );
+
+      taskMetrics.stopTimer(timerId);
+      return completedTask;
     } catch (error) {
       taskMetrics.stopTimer(timerId);
       throw error;
@@ -182,36 +191,32 @@ export class TaskLifecycle {
    * Executes: beforeTaskFail hooks -> fail -> afterTaskFail hooks
    */
   public async failTask(taskId: string, error: string): Promise<Task> {
-    // Execute before hooks
     await taskLifecycleHooks.executeBeforeTaskFail(taskId, error);
-
-    const task = await taskRegistry.getById(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
 
     const timerId = taskMetrics.startTimer({ operation: "fail" });
 
     try {
-      return await lockManager.withLock(
-        `task:${taskId}`,
-        `lifecycle:${task.owner || "system"}`,
-        async () => {
-          // Validate state transition
-          if (task!.status !== "running") {
-            throw new Error(`Cannot fail task with status: ${task!.status}`);
+      const failedTask = await this.executeTransition(
+        taskId,
+        "fail",
+        "system",
+        async (task) => {
+          if (task.status !== "running") {
+            throw TaskErrors.invalidStateTransition(
+              taskId,
+              task.status,
+              "failed",
+            );
           }
 
-          // Update task status
           const updated = await taskRegistry.update(taskId, {
             status: "failed",
             metadata: { error },
           });
           if (!updated) {
-            throw new Error(`Failed to update task: ${taskId}`);
+            throw TaskErrors.taskUpdateFailed(taskId);
           }
 
-          // Save error to persistence
           await multiLayerPersistence.appendLog(taskId, {
             timestamp: new Date().toISOString(),
             level: "error",
@@ -219,18 +224,16 @@ export class TaskLifecycle {
             data: { error },
           });
 
-          // Track metrics
           taskMetrics.failed({ status: "failed" });
-          taskMetrics.stopTimer(timerId);
-
           logger.error("Task failed", { taskId, error });
-
-          // Execute after hooks
           await taskLifecycleHooks.executeAfterTaskFail(taskId, error);
 
-          return updated!;
+          return updated;
         },
       );
+
+      taskMetrics.stopTimer(timerId);
+      return failedTask;
     } catch (err) {
       taskMetrics.stopTimer(timerId);
       throw err;
@@ -241,48 +244,45 @@ export class TaskLifecycle {
    * Cancel a task (transition: pending -> cancelled or running -> cancelled)
    */
   public async cancelTask(taskId: string): Promise<Task> {
-    const task = await taskRegistry.getById(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
     const timerId = taskMetrics.startTimer({ operation: "cancel" });
 
     try {
-      return await lockManager.withLock(
-        `task:${taskId}`,
-        `lifecycle:${task!.owner || "system"}`,
-        async () => {
-          // Validate state transition
-          if (!["pending", "running"].includes(task!.status)) {
-            throw new Error(`Cannot cancel task with status: ${task!.status}`);
+      const cancelledTask = await this.executeTransition(
+        taskId,
+        "cancel",
+        "system",
+        async (task) => {
+          if (!["pending", "running"].includes(task.status)) {
+            throw TaskErrors.invalidStateTransition(
+              taskId,
+              task.status,
+              "cancelled",
+            );
           }
 
-          // Update task status
           const updated = await taskRegistry.update(taskId, {
             status: "cancelled",
           });
           if (!updated) {
-            throw new Error(`Failed to update task: ${taskId}`);
+            throw TaskErrors.taskUpdateFailed(taskId);
           }
 
-          // Log cancellation
           await multiLayerPersistence.appendLog(taskId, {
             timestamp: new Date().toISOString(),
             level: "warning",
             message: "Task cancelled",
-            data: { fromStatus: task!.status },
+            data: { fromStatus: task.status },
           });
 
-          // Track metrics
           taskMetrics.cancelled({ status: "cancelled" });
-          taskMetrics.stopTimer(timerId);
-
           logger.warn("Task cancelled", { taskId });
 
-          return updated!;
+          return updated;
         },
       );
+
+      taskMetrics.stopTimer(timerId);
+      return cancelledTask;
     } catch (err) {
       taskMetrics.stopTimer(timerId);
       throw err;
@@ -293,35 +293,16 @@ export class TaskLifecycle {
    * Delete a task (transition: any status -> deleted)
    */
   public async deleteTask(taskId: string): Promise<void> {
-    const task = await taskRegistry.getById(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
-    return lockManager.withLock(
-      `task:${taskId}`,
-      `lifecycle:${task.owner || "system"}`,
-      async () => {
-        // Delete from registry
-        await taskRegistry.delete(taskId);
-
-        // Cleanup persistence
-        await multiLayerPersistence.cleanup(taskId);
-
-        logger.info("Task deleted", { taskId });
-      },
-    );
+    await this.executeTransition(taskId, "delete", "system", async (task) => {
+      await taskRegistry.delete(taskId);
+      await multiLayerPersistence.cleanup(taskId);
+      logger.info("Task deleted", { taskId });
+      return undefined as any;
+    });
   }
 
-  /**
-   * Get task status
-   */
   public async getTaskStatus(taskId: string): Promise<TaskStatus> {
-    const task = await taskRegistry.getById(taskId);
-    if (!task) {
-      throw new Error(`Task not found: ${taskId}`);
-    }
-
+    const task = await this.getTaskOrThrow(taskId);
     return task.status;
   }
 
