@@ -13,8 +13,3 @@ export const LOG_LEVELS = {
   WARNING: "warning",
   ERROR: "error",
 } as const;
-
-export const VALID_STATE_TRANSITIONS = {
-  pending: ["running", "cancelled"] as const,
-  running: ["completed", "failed", "cancelled"] as const,
-} as const;
