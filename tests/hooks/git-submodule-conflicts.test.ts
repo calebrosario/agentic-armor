@@ -8,13 +8,16 @@ import {
 } from "../../../src/util/git-operations";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import { exec } from "child_process";
 
 describe("Git Submodule Conflict Detection (Edge Case 9)", () => {
-  const testWorkspaceBase = "/tmp/test-submodule-workspace";
+  let testWorkspaceBase: string;
   const taskMemoryPath = ".task-memory";
 
   beforeEach(async () => {
+    // Create secure temp directory
+    testWorkspaceBase = path.join(os.tmpdir(), `test-submodule-${Date.now()}`);
     // Clean up test workspace
     await fs
       .rm(testWorkspaceBase, { recursive: true, force: true })
@@ -189,8 +192,10 @@ describe("Git Submodule Conflict Detection (Edge Case 9)", () => {
         await import("../../../src/hooks/git-hooks/submodule-creator");
       const hook = createSubmoduleCreatorHook();
 
-      // Create main repo
-      const mainRepoBase = "/tmp/test-main-repo";
+      const mainRepoBase = path.join(
+        os.tmpdir(),
+        `test-main-repo-${Date.now()}`,
+      );
       await fs
         .rm(mainRepoBase, { recursive: true, force: true })
         .catch(() => {});

@@ -8,13 +8,15 @@ import {
 } from "../../../src/util/git-operations";
 import * as fs from "fs/promises";
 import * as path from "path";
+import * as os from "os";
 import { exec } from "child_process";
 
 describe("Git Branch Naming Conflicts (Edge Case 6)", () => {
-  const testWorkspaceBase = "/tmp/test-workspace";
+  let testWorkspaceBase: string;
   const testTaskId = "test-task-123";
 
   beforeEach(async () => {
+    testWorkspaceBase = path.join(os.tmpdir(), `test-workspace-${Date.now()}`);
     // Clean up test workspace
     await fs
       .rm(testWorkspaceBase, { recursive: true, force: true })
