@@ -1,7 +1,16 @@
-import { createHash } from 'crypto';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { logger } from './logger';
-import { OpenCodeError } from '../types';
+import { createHash } from "crypto";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  renameSync,
+  copyFileSync,
+  unlinkSync,
+} from "fs";
+import { join, dirname, basename } from "path";
+import { tmpdir } from "os";
+import { logger } from "./logger";
+import { OpenCodeError } from "../types";
 
 export interface StateSnapshot {
   id: string;
@@ -40,12 +49,12 @@ export class StateValidator {
    * @returns Checksum string
    */
   public generateChecksum(data: any): string {
-    if (!data || typeof data !== 'object' || data === null) {
-      return '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+    if (!data || typeof data !== "object" || data === null) {
+      return "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     }
-    
+
     const jsonString = JSON.stringify(data, Object.keys(data).sort());
-    return createHash('sha256').update(jsonString).digest('hex');
+    return createHash("sha256").update(jsonString).digest("hex");
   }
 
   /**
@@ -55,7 +64,11 @@ export class StateValidator {
    * @param version - Version number
    * @returns State snapshot
    */
-  public createSnapshot(id: string, data: Record<string, any>, version: number = 1): StateSnapshot {
+  public createSnapshot(
+    id: string,
+    data: Record<string, any>,
+    version: number = 1,
+  ): StateSnapshot {
     const snapshot: StateSnapshot = {
       id,
       timestamp: new Date(),
@@ -64,10 +77,10 @@ export class StateValidator {
       version,
     };
 
-    logger.debug('State snapshot created', {
+    logger.debug("State snapshot created", {
       id,
       version,
-      checksum: snapshot.checksum.substring(0, 8) + '...', // Log first 8 chars only
+      checksum: snapshot.checksum.substring(0, 8) + "...", // Log first 8 chars only
     });
 
     return snapshot;
@@ -87,9 +100,11 @@ export class StateValidator {
     const checksumValid = currentChecksum === snapshot.checksum;
 
     if (!checksumValid) {
-      errors.push(`Checksum mismatch: expected ${snapshot.checksum}, got ${currentChecksum}`);
-      recoveryOptions.push('restore-from-jsonl');
-      recoveryOptions.push('use-last-known-good-state');
+      errors.push(
+        `Checksum mismatch: expected ${snapshot.checksum}, got ${currentChecksum}`,
+      );
+      recoveryOptions.push("restore-from-jsonl");
+      recoveryOptions.push("use-last-known-good-state");
     }
 
     // Validate data integrity
@@ -98,32 +113,37 @@ export class StateValidator {
       // Check for required fields
       if (!snapshot.id || !snapshot.timestamp || !snapshot.data) {
         dataIntegrity = false;
-        errors.push('Missing required fields in snapshot');
-        recoveryOptions.push('reconstruct-from-logs');
+        errors.push("Missing required fields in snapshot");
+        recoveryOptions.push("reconstruct-from-logs");
       }
 
       // Check timestamp validity
-      if (!(snapshot.timestamp instanceof Date) || isNaN(snapshot.timestamp.getTime())) {
+      if (
+        !(snapshot.timestamp instanceof Date) ||
+        isNaN(snapshot.timestamp.getTime())
+      ) {
         dataIntegrity = false;
-        errors.push('Invalid timestamp in snapshot');
-        recoveryOptions.push('use-current-timestamp');
+        errors.push("Invalid timestamp in snapshot");
+        recoveryOptions.push("use-current-timestamp");
       }
 
       // Check data structure
-      if (typeof snapshot.data !== 'object' || snapshot.data === null) {
+      if (typeof snapshot.data !== "object" || snapshot.data === null) {
         dataIntegrity = false;
-        errors.push('Invalid data structure in snapshot');
-        recoveryOptions.push('initialize-empty-state');
+        errors.push("Invalid data structure in snapshot");
+        recoveryOptions.push("initialize-empty-state");
       }
     } catch (error: unknown) {
       dataIntegrity = false;
-      errors.push(`Data validation error: ${error instanceof Error ? error.message : String(error)}`);
-      recoveryOptions.push('emergency-state-reset');
+      errors.push(
+        `Data validation error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      recoveryOptions.push("emergency-state-reset");
     }
 
     const isValid = checksumValid && dataIntegrity;
 
-    logger[isValid ? 'debug' : 'warn']('State snapshot validation completed', {
+    logger[isValid ? "debug" : "warn"]("State snapshot validation completed", {
       id: snapshot.id,
       version: snapshot.version,
       isValid,
@@ -147,9 +167,13 @@ export class StateValidator {
    * @param data - State data
    * @param version - Version number
    */
-  public saveState(filePath: string, data: Record<string, any>, version: number = 1): void {
+  public saveState(
+    filePath: string,
+    data: Record<string, any>,
+    version: number = 1,
+  ): void {
     try {
-      const snapshot = this.createSnapshot('state', data, version);
+      const snapshot = this.createSnapshot("state", data, version);
       const stateWithValidation = {
         ...snapshot,
         _validation: {
@@ -158,21 +182,27 @@ export class StateValidator {
         },
       };
 
-      writeFileSync(filePath, JSON.stringify(stateWithValidation, null, 2));
-      logger.info('State saved to file', {
+      const tempFile = join(
+        dirname(filePath),
+        `.tmp-${basename(filePath)}-${Date.now()}`,
+      );
+      writeFileSync(tempFile, JSON.stringify(stateWithValidation, null, 2));
+      renameSync(tempFile, filePath);
+
+      logger.info("State saved to file", {
         filePath,
         version,
-        checksum: snapshot.checksum.substring(0, 8) + '...',
+        checksum: snapshot.checksum.substring(0, 8) + "...",
       });
     } catch (error: unknown) {
-      logger.error('Failed to save state to file', {
+      logger.error("Failed to save state to file", {
         filePath,
         error: error instanceof Error ? error.message : String(error),
       });
       throw new OpenCodeError(
-        'STATE_SAVE_FAILED',
+        "STATE_SAVE_FAILED",
         `Failed to save state to ${filePath}`,
-        { filePath, version }
+        { filePath, version },
       );
     }
   }
@@ -185,11 +215,11 @@ export class StateValidator {
   public loadState(filePath: string): Record<string, any> | null {
     try {
       if (!existsSync(filePath)) {
-        logger.warn('State file does not exist', { filePath });
+        logger.warn("State file does not exist", { filePath });
         return null;
       }
 
-      const fileContent = readFileSync(filePath, 'utf8');
+      const fileContent = readFileSync(filePath, "utf8");
       const stateWithValidation = JSON.parse(fileContent);
 
       // Extract snapshot from saved state
@@ -200,30 +230,34 @@ export class StateValidator {
       const validation = this.validateSnapshot(snapshot as StateSnapshot);
 
       if (validation.isValid) {
-        logger.info('State loaded and validated successfully', {
+        logger.info("State loaded and validated successfully", {
           filePath,
           version: snapshot.version,
-          checksum: snapshot.checksum.substring(0, 8) + '...',
+          checksum: snapshot.checksum.substring(0, 8) + "...",
         });
         return snapshot.data;
       } else {
-        logger.error('State validation failed', {
+        logger.error("State validation failed", {
           filePath,
           errors: validation.errors,
           recoveryOptions: validation.recoveryOptions,
         });
 
         // Attempt automatic recovery
-        const recoveredState = this.attemptRecovery(filePath, snapshot as StateSnapshot, validation);
+        const recoveredState = this.attemptRecovery(
+          filePath,
+          snapshot as StateSnapshot,
+          validation,
+        );
         if (recoveredState) {
-          logger.info('Automatic state recovery successful', { filePath });
+          logger.info("Automatic state recovery successful", { filePath });
           return recoveredState;
         }
 
         return null; // Recovery failed
       }
     } catch (error: unknown) {
-      logger.error('Failed to load state from file', {
+      logger.error("Failed to load state from file", {
         filePath,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -241,27 +275,29 @@ export class StateValidator {
   private attemptRecovery(
     filePath: string,
     snapshot: StateSnapshot,
-    validation: StateValidationResult
+    validation: StateValidationResult,
   ): Record<string, any> | null {
     // Try recovery options in order of preference
     for (const option of validation.recoveryOptions) {
       try {
         switch (option) {
-          case 'restore-from-jsonl':
+          case "restore-from-jsonl":
             return this.restoreFromJSONL(filePath, snapshot);
 
-          case 'use-last-known-good-state':
+          case "use-last-known-good-state":
             return this.restoreFromBackup(filePath);
 
-          case 'reconstruct-from-logs':
+          case "reconstruct-from-logs":
             return this.reconstructFromLogs(filePath);
 
-          case 'initialize-empty-state':
-            logger.warn('Initializing empty state due to corruption', { filePath });
+          case "initialize-empty-state":
+            logger.warn("Initializing empty state due to corruption", {
+              filePath,
+            });
             return {};
 
-          case 'emergency-state-reset':
-            logger.warn('Emergency state reset performed', { filePath });
+          case "emergency-state-reset":
+            logger.warn("Emergency state reset performed", { filePath });
             return {};
 
           default:
@@ -276,7 +312,7 @@ export class StateValidator {
       }
     }
 
-    logger.error('All recovery options failed', { filePath });
+    logger.error("All recovery options failed", { filePath });
     return null;
   }
 
@@ -286,16 +322,19 @@ export class StateValidator {
    * @param snapshot - Current snapshot
    * @returns Recovered state
    */
-  private restoreFromJSONL(filePath: string, snapshot: StateSnapshot): Record<string, any> | null {
+  private restoreFromJSONL(
+    filePath: string,
+    snapshot: StateSnapshot,
+  ): Record<string, any> | null {
     // In a real implementation, this would read from a JSONL log file
     // containing historical state changes
-    logger.info('Attempting JSONL restoration (placeholder)', { filePath });
+    logger.info("Attempting JSONL restoration (placeholder)", { filePath });
 
     // Placeholder: return a minimal recovered state
     return {
       ...snapshot.data,
       _recovered: true,
-      _recoveryMethod: 'jsonl',
+      _recoveryMethod: "jsonl",
       _recoveryTime: new Date().toISOString(),
     };
   }
@@ -309,19 +348,19 @@ export class StateValidator {
     const backupPath = `${filePath}.backup`;
 
     if (existsSync(backupPath)) {
-      logger.info('Attempting backup restoration', { filePath, backupPath });
+      logger.info("Attempting backup restoration", { filePath, backupPath });
       const backupData = this.loadState(backupPath);
       if (backupData) {
         return {
           ...backupData,
           _recovered: true,
-          _recoveryMethod: 'backup',
+          _recoveryMethod: "backup",
           _recoveryTime: new Date().toISOString(),
         };
       }
     }
 
-    throw new Error('No valid backup found');
+    throw new Error("No valid backup found");
   }
 
   /**
@@ -332,12 +371,12 @@ export class StateValidator {
   private reconstructFromLogs(filePath: string): Record<string, any> {
     // In a real implementation, this would replay operations from logs
     // containing historical state changes
-    logger.info('Attempting log reconstruction (placeholder)', { filePath });
+    logger.info("Attempting log reconstruction (placeholder)", { filePath });
 
     // Placeholder: return a minimal reconstructed state
     return {
       _recovered: true,
-      _recoveryMethod: 'logs',
+      _recoveryMethod: "logs",
       _recoveryTime: new Date().toISOString(),
     };
   }
@@ -349,14 +388,13 @@ export class StateValidator {
   public createBackup(filePath: string): void {
     try {
       const backupPath = `${filePath}.backup`;
-      
+
       if (existsSync(filePath)) {
-        const content = readFileSync(filePath, 'utf8');
-        writeFileSync(backupPath, content);
-        logger.debug('State backup created', { filePath, backupPath });
+        copyFileSync(filePath, backupPath);
+        logger.debug("State backup created", { filePath, backupPath });
       }
     } catch (error: unknown) {
-      logger.warn('Failed to create state backup', {
+      logger.warn("Failed to create state backup", {
         filePath,
         error: error instanceof Error ? error.message : String(error),
       });

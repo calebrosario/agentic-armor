@@ -181,9 +181,11 @@ export class SnapshotOptimizer {
     filePath: string,
   ): Promise<ChunkResult> {
     const fullPath = join(this.basePath, taskId, filePath);
-    const stats = await fs.stat(fullPath);
+    const fileHandle = await fs.open(fullPath, "r");
+    const stats = await fileHandle.stat();
 
     if (stats.size <= LARGE_FILE_THRESHOLD) {
+      await fileHandle.close();
       return {
         originalFile: filePath,
         chunks: [filePath],
@@ -206,7 +208,6 @@ export class SnapshotOptimizer {
     const manifest: ChunkInfo[] = [];
     const totalChunks = Math.ceil(stats.size / CHUNK_SIZE);
 
-    const fileHandle = await fs.open(fullPath, "r");
     let bytesRead = 0;
     let chunkIndex = 0;
 
@@ -258,7 +259,9 @@ export class SnapshotOptimizer {
     options: TarOptions = {},
   ): Promise<void> {
     const excludeFlags = (options.excludePatterns || [])
-      .map((p) => `--exclude='${p.replace(/'/g, "'\\''").replace(/\\/g, '\\\\')}'`)
+      .map(
+        (p) => `--exclude='${p.replace(/'/g, "'\\''").replace(/\\/g, "\\\\")}'`,
+      )
       .join(" ");
 
     const followSymlinks = options.followSymlinks ? "" : "--no-recursion";
