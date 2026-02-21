@@ -1,4 +1,5 @@
-import { NetworkIsolator } from "../network-isolator";
+import { describe, it, expect, beforeEach } from "bun:test";
+import { NetworkIsolator } from "../../src/util/network-isolator";
 import { promises as fs } from "fs";
 
 // Helper to check if Docker socket exists

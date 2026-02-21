@@ -1,19 +1,27 @@
-import { MCPServerEnhanced } from "../../mcp/server";
+import { MCPServerEnhanced } from "../../src/mcp/server-enhanced";
 import { stateValidator } from "../state-validator";
 import * as fs from "fs";
 import * as path from "path";
+import { getAvailablePort } from "./ports";
+import { describe, beforeEach, afterEach, it, expect } from "bun:test";
 
 describe("Phase 1: Crash Recovery Tests", () => {
   const stateFile = "./data/mcp-server-state.json";
   const crashReportDir = "./logs";
 
-  beforeEach(() => {
+  beforeEach(async () => {
     if (fs.existsSync(stateFile)) {
       fs.unlinkSync(stateFile);
     }
+
+    const port = await getAvailablePort(9000);
+    process.env.MCP_PORT = port.toString();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await MCPServerEnhanced.getInstance().stop();
+    delete process.env.MCP_PORT;
+
     if (fs.existsSync(crashReportDir)) {
       const files = fs.readdirSync(crashReportDir);
       files.forEach((file) => {
@@ -131,7 +139,7 @@ describe("Phase 1: Crash Recovery Tests", () => {
   });
 
   describe("Health Monitoring", () => {
-    it.skip("should update lastHealthCheck timestamp - flaky test", async () => {
+    it("should update lastHealthCheck timestamp", async () => {
       const server = MCPServerEnhanced.getInstance();
       await server.initialize();
 
@@ -156,7 +164,10 @@ describe("Phase 1: Crash Recovery Tests", () => {
       }
     });
 
-    it.skip("should restart after crash - flaky EADDRINUSE test", async () => {
+    it("should restart after crash", async () => {
+      const port = await getAvailablePort(9100);
+      process.env.MCP_PORT = port.toString();
+
       const server = MCPServerEnhanced.getInstance();
 
       await expect(server.restart()).resolves.not.toThrow();

@@ -1,7 +1,7 @@
 // Plan Hooks Tests - Phase 2: MVP Core
 // Week 12, Task 12.13: Hook Tests
 
-import { describe, test, expect, beforeEach, jest } from "@jest/globals";
+import { describe, test, expect, beforeEach, mock } from "bun:test";
 import { createPlanFileCreatorHook } from "../../src/hooks/plan-hooks/file-creator";
 import { createPlanUpdaterHook } from "../../src/hooks/plan-hooks/updater";
 import { createPlanFinalizerHook } from "../../src/hooks/plan-hooks/finalizer";
@@ -9,7 +9,7 @@ import type { TaskResult } from "../../src/types/lifecycle";
 
 describe("Plan Hooks", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mock.restore();
   });
 
   describe("Plan File Creator Hook", () => {

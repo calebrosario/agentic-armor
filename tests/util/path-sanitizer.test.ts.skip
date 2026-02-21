@@ -1,14 +1,14 @@
 // Path Sanitization Tests - Phase 2: Edge Cases
 // Week 15, Day 4: Testing & Validation
 
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
   validatePath,
   sanitizePath,
   containsReservedName,
   isPathTraversal,
   PathValidationResult,
-} from "../../../src/util/path-sanitizer";
+} from "../../src/util/path-sanitizer";
 import * as fs from "fs/promises";
 import * as path from "path";
 

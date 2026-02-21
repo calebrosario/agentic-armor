@@ -1,11 +1,11 @@
 // Git Branch Naming Conflicts Tests - Phase 2: Edge Cases
 // Week 15, Day 1-2: Testing & Validation
 
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
   createTaskBranch,
   getWorkspacePath,
-} from "../../../src/util/git-operations";
+} from "../../src/util/git-operations";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as os from "os";

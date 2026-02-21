@@ -1,4 +1,5 @@
-import { MCPServerEnhanced, TOOL_DEFINITIONS } from "../../mcp/server";
+import { MCPServerEnhanced } from "../../src/mcp/server-enhanced";
+import { describe, beforeEach, it, expect } from "bun:test";
 
 describe("Phase 1 Integration Tests", () => {
   describe("MCP Server Integration", () => {

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "@jest/globals";
-import { getErrorMessage } from "../errors";
+import { describe, it, expect } from "bun:test";
+import { getErrorMessage } from "../../src/util/errors";
 
 describe("getErrorMessage", () => {
   it("should extract message from Error instances", () => {

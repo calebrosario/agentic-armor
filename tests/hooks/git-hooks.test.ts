@@ -1,51 +1,51 @@
 // Git Hooks Tests - Phase 2: MVP Core
 // Week 12, Task 12.13: Hook Tests
 
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { createPreTaskBranchCreatorHook } from '../../src/hooks/git-hooks/branch-creator';
-import { createBranchNameValidatorHook } from '../../src/hooks/git-hooks/branch-validator';
-import { createSubmoduleCreatorHook } from '../../src/hooks/git-hooks/submodule-creator';
+import { describe, test, expect, beforeEach, mock } from "bun:test";
+import { createPreTaskBranchCreatorHook } from "../../src/hooks/git-hooks/branch-creator";
+import { createBranchNameValidatorHook } from "../../src/hooks/git-hooks/branch-validator";
+import { createSubmoduleCreatorHook } from "../../src/hooks/git-hooks/submodule-creator";
 
-describe('Git Hooks', () => {
+describe("Git Hooks", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    mock.restore();
   });
 
-  describe('Branch Creator Hook', () => {
-    test('should create hook function', () => {
+  describe("Branch Creator Hook", () => {
+    test("should create hook function", () => {
       const hook = createPreTaskBranchCreatorHook();
-      expect(typeof hook).toBe('function');
+      expect(typeof hook).toBe("function");
     });
 
-    test('should execute hook with taskId and agentId', async () => {
+    test("should execute hook with taskId and agentId", async () => {
       const hook = createPreTaskBranchCreatorHook();
       // Hook logs internally (real exec calls are placeholders)
-      await expect(hook('task-123', 'agent-1')).resolves.not.toThrow();
+      await expect(hook("task-123", "agent-1")).resolves.not.toThrow();
     });
   });
 
-  describe('Branch Validator Hook', () => {
-    test('should create hook function', () => {
+  describe("Branch Validator Hook", () => {
+    test("should create hook function", () => {
       const hook = createBranchNameValidatorHook();
-      expect(typeof hook).toBe('function');
+      expect(typeof hook).toBe("function");
     });
 
-    test('should validate branch name format', async () => {
+    test("should validate branch name format", async () => {
       const hook = createBranchNameValidatorHook();
-      await expect(hook('task-123', 'agent-1')).resolves.not.toThrow();
+      await expect(hook("task-123", "agent-1")).resolves.not.toThrow();
     });
   });
 
-  describe('Submodule Creator Hook', () => {
-    test('should create hook function', () => {
+  describe("Submodule Creator Hook", () => {
+    test("should create hook function", () => {
       const hook = createSubmoduleCreatorHook();
-      expect(typeof hook).toBe('function');
+      expect(typeof hook).toBe("function");
     });
 
-    test('should execute hook with taskId and agentId', async () => {
+    test("should execute hook with taskId and agentId", async () => {
       const hook = createSubmoduleCreatorHook();
       // Hook logs internally (real exec calls are placeholders)
-      await expect(hook('task-456', 'agent-1')).resolves.not.toThrow();
+      await expect(hook("task-456", "agent-1")).resolves.not.toThrow();
     });
   });
 });

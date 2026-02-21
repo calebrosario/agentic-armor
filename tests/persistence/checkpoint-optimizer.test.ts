@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import { join } from "path";
+import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import {
   CheckpointOptimizer,
   checkpointOptimizer,
@@ -25,7 +26,7 @@ describe("CheckpointOptimizer", () => {
     } catch {
       // Directory might not exist
     }
-    jest.clearAllMocks();
+    mock.restore();
   });
 
   describe("getInstance", () => {
