@@ -539,6 +539,7 @@ export class DockerManager {
       tail?: number;
       since?: number;
       timestamps?: boolean;
+      follow?: boolean;
     } = {},
   ): Promise<LogStream> {
     try {
@@ -552,11 +553,16 @@ export class DockerManager {
         tail: options.tail || 100,
         since: options.since,
         timestamps: options.timestamps || false,
-        follow: false,
+        follow: options.follow || false,
       } as Docker.ContainerLogsOptions;
 
       const logs = await (container.logs as any)(logOptions);
 
+      if (options.follow) {
+        return logs as any as LogStream;
+      }
+
+      // Parse demuxed logs (stdout/stderr separation)
       const logString = logs.toString();
 
       // Parse demuxed logs (stdout/stderr separation)
@@ -735,6 +741,7 @@ export class DockerManager {
       labels,
       logOptions,
       autoRemove,
+      healthCheck,
     } = config;
 
     // Default resource limits from config
@@ -816,6 +823,43 @@ export class DockerManager {
       hostConfig.CpuPeriod = resourceLimits.cpuPeriod;
       hostConfig.PidsLimit = resourceLimits.pidsLimit || defaultPidsLimit;
       hostConfig.BlkioWeight = resourceLimits.blkioWeight;
+    }
+
+    // Resource limit enforcement is applied via Docker HostConfig
+    // Runtime monitoring can be added via getContainerStats polling
+
+    // Apply health check configuration
+    if (healthCheck) {
+      const healthConfig: any = {};
+
+      if (healthCheck.test) {
+        if (Array.isArray(healthCheck.test)) {
+          healthConfig.Cmd = healthCheck.test;
+        } else {
+          healthConfig.Cmd = ["/bin/sh", "-c", healthCheck.test];
+        }
+      }
+
+      if (healthCheck.interval) {
+        healthConfig.Interval = healthCheck.interval;
+      }
+
+      if (healthCheck.timeout) {
+        healthConfig.Timeout = healthCheck.timeout;
+      }
+
+      if (healthCheck.retries) {
+        healthConfig.Retries = healthCheck.retries;
+      }
+
+      if (healthCheck.startPeriod) {
+        healthConfig.StartPeriod = healthCheck.startPeriod;
+      }
+
+      if (Object.keys(healthConfig).length > 0) {
+        const extendedHostConfig = hostConfig as any;
+        extendedHostConfig.Healthcheck = healthConfig;
+      }
     }
 
     // Apply security options
