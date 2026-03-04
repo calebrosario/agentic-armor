@@ -793,8 +793,16 @@ export class DockerManager {
         duration,
       });
 
+      // Re-throw OpenCodeError as-is to preserve error codes
+      if (error instanceof OpenCodeError) {
+        throw error;
+      }
+
       // Handle timeout errors
-      if (error instanceof Error && error.message.includes("timeout")) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("timeout") || error.message.includes("timed out"))
+      ) {
         throw new OpenCodeError(
           "EXEC_TIMEOUT",
           `Command execution timed out after ${timeoutMs}ms`,
@@ -904,6 +912,11 @@ export class DockerManager {
         image,
         error: error instanceof Error ? error.message : String(error),
       });
+
+      // Re-throw OpenCodeError as-is to preserve error codes
+      if (error instanceof OpenCodeError) {
+        throw error;
+      }
 
       throw new OpenCodeError(
         "IMAGE_PULL_FAILED",
